@@ -347,13 +347,14 @@ function Build-MetricsJson {
         if ($script:segHeat[$i] -lt 0)   { $script:segHeat[$i] = 0 }
     }
 
-    # ── Check for targeted burst signal ──
+    # ── Check for targeted burst signal (supports multiple segments) ──
     $burstFile = Join-Path $PSScriptRoot "..\data\burst_signal.txt"
     if (Test-Path $burstFile) {
         $burstData = Get-Content $burstFile -Raw
-        if ($burstData -match "segment:(\d+)\s+intensity:([\d.]+)") {
-            $burstSeg = [int]$matches[1]
-            $burstInt = [double]$matches[2]
+        $burstMatches = [regex]::Matches($burstData, "segment:(\d+)\s+intensity:([\d.]+)")
+        foreach ($bm in $burstMatches) {
+            $burstSeg = [int]$bm.Groups[1].Value
+            $burstInt = [double]$bm.Groups[2].Value
             $script:segHeat[$burstSeg] += $burstInt
             $script:segRequests[$burstSeg] += [int]($burstInt * 10)
             if ($script:segHeat[$burstSeg] -gt 100) { $script:segHeat[$burstSeg] = 100 }
@@ -467,17 +468,22 @@ while ($listener.IsListening) {
             $res.OutputStream.Write($buf, 0, $buf.Length)
         }
         "/burst" {
-            $seg = 14; $intensity = 30
+            $segStr = "14"; $intensity = 30
             $qs = $req.Url.Query
-            if ($qs -match "seg=(\d+)") { $seg = [int]$matches[1] }
+            if ($qs -match "seg=([0-9,]+)") { $segStr = $matches[1] }
             if ($qs -match "intensity=(\d+)") { $intensity = [int]$matches[1] }
+            $segs = $segStr -split "," | ForEach-Object { [int]$_.Trim() }
             $burstFile = Join-Path $PSScriptRoot "..\data\burst_signal.txt"
-            "segment:$seg intensity:$intensity" | Set-Content $burstFile
-            $buf = [System.Text.Encoding]::UTF8.GetBytes("{`"status`":`"burst`",`"segment`":$seg,`"intensity`":$intensity}")
+            $lines = @()
+            foreach ($s in $segs) { $lines += "segment:$s intensity:$intensity" }
+            $lines -join "`n" | Set-Content $burstFile
+            $segJson = ($segs | ForEach-Object { $_ }) -join ","
+            $segList = ($segs | ForEach-Object { "S$_" }) -join ","
+            $buf = [System.Text.Encoding]::UTF8.GetBytes("{`"status`":`"burst`",`"segments`":[$segJson],`"intensity`":$intensity}")
             $res.ContentType = "application/json"
             $res.ContentLength64 = $buf.Length
             $res.OutputStream.Write($buf, 0, $buf.Length)
-            Write-Host "  [BURST] S$seg intensity=$intensity" -ForegroundColor Yellow
+            Write-Host "  [BURST] $segList intensity=$intensity" -ForegroundColor Yellow
         }
         "/burst/stop" {
             $burstFile = Join-Path $PSScriptRoot "..\data\burst_signal.txt"

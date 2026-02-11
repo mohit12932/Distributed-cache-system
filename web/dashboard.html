@@ -15,7 +15,6 @@
         header h1{font-size:1.45em;color:#fff}
         header h1 span{color:#00d4ff}
         .hdr-right{display:flex;align-items:center;gap:14px}
-        .pinn-eq{font-family:'Cambria Math','Times New Roman',serif;font-size:.88em;color:#ce93d8;background:rgba(187,134,252,.08);padding:4px 12px;border-radius:6px;border:1px solid rgba(187,134,252,.18)}
         .badge{display:flex;align-items:center;gap:6px;padding:4px 12px;border-radius:16px;font-size:.78em;font-weight:600}
         .badge.on{background:rgba(76,175,80,.15);color:#4caf50;border:1px solid #4caf50}
         .badge.off{background:rgba(244,67,54,.15);color:#f44336;border:1px solid #f44336}
@@ -48,14 +47,19 @@
         .c-blue{color:#00d4ff}.c-green{color:#4caf50}.c-orange{color:#ff9800}.c-red{color:#f44336}.c-purple{color:#bb86fc}.c-gray{color:#546e7a}
 
         /* ── Burst bar ── */
-        .burst-bar{display:flex;align-items:center;gap:10px;margin-bottom:14px;padding:10px 18px;background:linear-gradient(135deg,#1a0a2a,#0e1a3a);border-radius:10px;border:1px solid #4a1a7a}
+        .burst-bar{display:flex;align-items:center;gap:10px;margin-bottom:14px;padding:10px 18px;background:linear-gradient(135deg,#1a0a2a,#0e1a3a);border-radius:10px;border:1px solid #4a1a7a;flex-wrap:wrap}
         .burst-bar label{font-size:.78em;color:#8892b0}
-        .burst-bar input{width:52px;padding:5px 6px;border:1px solid #4a1a7a;border-radius:5px;background:#0a0a14;color:#e0e0e0;font-size:.82em;text-align:center}
+        .burst-bar input[type=text]{width:140px;padding:5px 8px;border:1px solid #4a1a7a;border-radius:5px;background:#0a0a14;color:#e0e0e0;font-size:.82em}
+        .burst-bar input[type=number]{width:52px;padding:5px 6px;border:1px solid #4a1a7a;border-radius:5px;background:#0a0a14;color:#e0e0e0;font-size:.82em;text-align:center}
         .bbtn{padding:6px 16px;border:none;border-radius:7px;font-weight:700;font-size:.8em;cursor:pointer;transition:all .2s}
         .bbtn.fire{background:linear-gradient(135deg,#f44336,#ff5722);color:#fff}
         .bbtn.fire:hover{filter:brightness(1.2);box-shadow:0 0 14px rgba(244,67,54,.5)}
         .bbtn.stop{background:rgba(76,175,80,.12);color:#4caf50;border:1px solid #4caf50}
         .bbtn.stop:hover{background:rgba(76,175,80,.25)}
+        .burst-presets{display:flex;gap:4px}
+        .bpreset{padding:3px 8px;border:1px solid rgba(187,134,252,.25);border-radius:4px;background:rgba(187,134,252,.06);color:#bb86fc;font-size:.72em;cursor:pointer;transition:all .2s}
+        .bpreset:hover{background:rgba(187,134,252,.18);border-color:#bb86fc}
+        .bpreset.active{background:rgba(187,134,252,.28);border-color:#bb86fc}
 
         /* ── Stroke alert ── */
         .stroke-alert{display:none;align-items:center;gap:10px;padding:12px 18px;margin-bottom:14px;background:rgba(244,67,54,.1);border:1px solid #f44336;border-radius:10px;animation:blink 1s infinite}
@@ -63,13 +67,22 @@
         .sa-icon{font-size:1.5em}.sa-text{font-size:.88em;color:#ef5350;font-weight:600}.sa-detail{font-size:.75em;color:#ef9a9a}
         @keyframes blink{0%,100%{opacity:1}50%{opacity:.45}}
 
-        /* ── Heatmap ── */
-        .heatmap{display:grid;grid-template-columns:repeat(8,1fr);gap:5px}
-        .seg{aspect-ratio:1.6;border-radius:5px;display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:.7em;font-weight:700;transition:all .3s;position:relative}
-        .seg .sh{font-size:.8em;opacity:.75;margin-top:1px}
-        .seg-cold{background:#1a3a5c;color:#64b5f6}.seg-warm{background:#2e4a1e;color:#81c784}.seg-hot{background:#5c3a0a;color:#ffb74d}.seg-stroke{background:#5c1a1a;color:#ef5350;animation:blink .6s infinite}
-        .hm-legend{display:flex;gap:14px;justify-content:center;margin-top:10px;font-size:.72em;color:#546e7a}
-        .hm-legend span{display:flex;align-items:center;gap:5px}
+        /* ── PINN equation inline ── */
+        .pinn-eq-inline{margin-left:auto;font-family:'Cambria Math','Times New Roman',serif;font-size:.82em;color:#ce93d8;background:rgba(187,134,252,.08);padding:2px 10px;border-radius:5px;border:1px solid rgba(187,134,252,.18);white-space:nowrap}
+
+        /* ── Node Topology ── */
+        .topo-svg{width:100%;height:auto}
+        .topo-svg text{font-family:'Segoe UI',sans-serif}
+
+        /* ── Merged Segment Grid (Heat + Lock) ── */
+        .sg-grid{display:grid;grid-template-columns:repeat(8,1fr);gap:5px}
+        .sg{aspect-ratio:1.5;border-radius:5px;display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:.68em;font-weight:700;transition:all .3s;border:2px solid transparent}
+        .sg .sg-heat{font-size:.95em;margin:1px 0}
+        .sg .sg-lock{font-size:.7em;opacity:.82;margin-top:1px;padding:0 3px;border-radius:2px}
+        .sg-cold{background:#1a3a5c;color:#64b5f6}.sg-warm{background:#2e4a1e;color:#81c784}.sg-hot{background:#5c3a0a;color:#ffb74d}.sg-stroke{background:#5c1a1a;color:#ef5350;animation:blink .6s infinite}
+        .sg-lk-free{border-color:transparent}.sg-lk-shared{border-color:#2196F3}.sg-lk-excl{border-color:#ff9800}.sg-lk-cont{border-color:#f44336;animation:blink .5s infinite}
+        .sg-legend{display:flex;gap:10px;justify-content:center;margin-top:10px;font-size:.7em;color:#546e7a;flex-wrap:wrap}
+        .sg-legend span{display:flex;align-items:center;gap:4px}
         .sw{width:12px;height:12px;border-radius:3px;display:inline-block}
 
         /* ── WB Pipeline ── */
@@ -82,17 +95,11 @@
         .wb-arr{flex:0 0 32px;text-align:center;font-size:1em;color:#1f3460}
         .wb-arr.on{color:#4caf50;animation:ap 1s infinite}
         @keyframes ap{0%,100%{opacity:.35}50%{opacity:1}}
-
-        /* ── Lock Matrix ── */
-        .lock-grid{display:grid;grid-template-columns:repeat(8,1fr);gap:4px}
-        .lk{aspect-ratio:1.4;border-radius:5px;display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:.65em;font-weight:700;transition:all .3s}
-        .lk .lk-sub{font-size:.78em;opacity:.7;margin-top:1px}
-        .lk-free{background:#1a2a1a;color:#4caf50}.lk-shared{background:#1a2a3a;color:#64b5f6}.lk-excl{background:#3a2a0a;color:#ffb74d}.lk-cont{background:#3a0a0a;color:#ef5350;animation:blink .5s infinite}
-        .lk-legend{display:flex;gap:14px;justify-content:center;margin-top:8px;font-size:.7em;color:#546e7a}
-        .lk-legend span{display:flex;align-items:center;gap:5px}
+        .wb-divider{height:1px;background:linear-gradient(90deg,transparent,#1f3460,transparent);margin:10px 0}
+        .wb-ev-title{font-size:.78em;color:#546e7a;margin-bottom:6px;text-transform:uppercase;letter-spacing:.4px}
 
         /* ── Event log ── */
-        .evlog{max-height:210px;overflow-y:auto;font-family:'Consolas','Courier New',monospace;font-size:.76em;line-height:1.7}
+        .evlog{max-height:180px;overflow-y:auto;font-family:'Consolas','Courier New',monospace;font-size:.76em;line-height:1.7}
         .evlog::-webkit-scrollbar{width:5px}.evlog::-webkit-scrollbar-thumb{background:#1f3460;border-radius:3px}
         .ev{display:flex;gap:8px;padding:2px 4px;border-radius:4px;border-bottom:1px solid rgba(31,52,96,.3)}
         .ev:hover{background:rgba(255,255,255,.03)}
@@ -114,72 +121,44 @@
     <header>
         <h1>Distributed <span>Cache</span> System</h1>
         <div class="hdr-right">
-            <div class="pinn-eq">&part;u/&part;t + u&middot;&part;u/&part;x = &nu;&middot;&part;&sup2;u/&part;x&sup2;</div>
             <div class="badge on" id="badge"><div class="dot"></div><span id="badgeTxt">Connected</span></div>
         </div>
     </header>
 
     <!-- ═══ STATUS BAR ═══ -->
-    <div class="status-bar" id="statusBar">
-        <div class="sb-item">
-            <div class="sb-label">Server</div>
-            <div class="sb-val c-green" id="sbServer">ONLINE</div>
-        </div>
-        <div class="sb-item">
-            <div class="sb-label">Write Mode</div>
-            <div class="sb-val c-blue" id="sbMode">Write-Back</div>
-        </div>
-        <div class="sb-item">
-            <div class="sb-label">Segments</div>
-            <div class="sb-val c-blue" id="sbSegs">32 Active</div>
-        </div>
-        <div class="sb-item">
-            <div class="sb-label">PINN Engine</div>
-            <div class="sb-val c-purple" id="sbPinn">Normal</div>
-        </div>
-        <div class="sb-item">
-            <div class="sb-label">Lock Health</div>
-            <div class="sb-val c-green" id="sbLock">All Free</div>
-        </div>
-        <div class="sb-item">
-            <div class="sb-label">WB Queue</div>
-            <div class="sb-val c-green" id="sbWB">Idle</div>
-        </div>
+    <div class="status-bar">
+        <div class="sb-item"><div class="sb-label">Server</div><div class="sb-val c-green" id="sbServer">ONLINE</div></div>
+        <div class="sb-item"><div class="sb-label">Write Mode</div><div class="sb-val c-blue" id="sbMode">Write-Back</div></div>
+        <div class="sb-item"><div class="sb-label">Segments</div><div class="sb-val c-blue" id="sbSegs">32 Active</div></div>
+        <div class="sb-item"><div class="sb-label">PINN Engine</div><div class="sb-val c-purple" id="sbPinn">Normal</div></div>
+        <div class="sb-item"><div class="sb-label">Lock Health</div><div class="sb-val c-green" id="sbLock">All Free</div></div>
+        <div class="sb-item"><div class="sb-label">WB Queue</div><div class="sb-val c-green" id="sbWB">Idle</div></div>
     </div>
 
     <!-- ═══ KPI ROW ═══ -->
     <div class="kpi-row">
+        <div class="kpi"><div class="v c-blue" id="kTotalOps">0</div><div class="l">Total Operations</div></div>
+        <div class="kpi"><div class="v c-green" id="kOps">0</div><div class="l">Ops / Second</div></div>
         <div class="kpi">
-            <div class="v c-blue" id="kTotalOps">0</div>
-            <div class="l">Total Operations</div>
-        </div>
-        <div class="kpi">
-            <div class="v c-green" id="kOps">0</div>
-            <div class="l">Ops / Second</div>
-        </div>
-        <div class="kpi">
-            <div class="v c-orange" id="kHitRate">0%</div>
-            <div class="l">Cache Hit Rate</div>
+            <div class="v c-orange" id="kHitRate">0%</div><div class="l">Cache Hit Rate</div>
             <div class="sub"><span class="c-green" id="kHits">0</span> hits &middot; <span class="c-red" id="kMiss">0</span> misses</div>
         </div>
-        <div class="kpi">
-            <div class="v c-purple" id="kKeys">0</div>
-            <div class="l">Active Keys</div>
-        </div>
-        <div class="kpi">
-            <div class="v c-green" id="kFlushed">0</div>
-            <div class="l">WB Flushed to Disk</div>
-        </div>
-        <div class="kpi">
-            <div class="v c-red" id="kContentions">0</div>
-            <div class="l">Lock Contentions</div>
-        </div>
+        <div class="kpi"><div class="v c-purple" id="kKeys">0</div><div class="l">Active Keys</div></div>
+        <div class="kpi"><div class="v c-green" id="kFlushed">0</div><div class="l">WB Flushed to Disk</div></div>
+        <div class="kpi"><div class="v c-red" id="kContentions">0</div><div class="l">Lock Contentions</div></div>
     </div>
 
-    <!-- ═══ BURST + ALERT ═══ -->
+    <!-- ═══ BURST BAR (Multi-Segment) ═══ -->
     <div class="burst-bar">
-        <span style="color:#bb86fc;font-weight:700;font-size:.88em">PINN Burst Control</span>
-        <label>Seg</label><input type="number" id="burstSeg" value="14" min="0" max="31">
+        <span style="color:#bb86fc;font-weight:700;font-size:.88em">PINN Burst</span>
+        <label>Segments</label>
+        <input type="text" id="burstSegs" value="14" placeholder="e.g. 14,15,16">
+        <div class="burst-presets">
+            <button class="bpreset active" onclick="setPreset(this,'14')">S14</button>
+            <button class="bpreset" onclick="setPreset(this,'14,15,16')">S14-16</button>
+            <button class="bpreset" onclick="setPreset(this,'0,8,16,24')">Corners</button>
+            <button class="bpreset" onclick="setPreset(this,'12,13,14,15,16,17,18,19')">Mid-8</button>
+        </div>
         <label>Power</label><input type="number" id="burstPow" value="30" min="1" max="50">
         <button class="bbtn fire" onclick="fireBurst()">FIRE BURST</button>
         <button class="bbtn stop" onclick="stopBurst()">STOP</button>
@@ -188,43 +167,102 @@
 
     <div class="stroke-alert" id="strokeAlert">
         <div class="sa-icon">&#9888;</div>
-        <div>
-            <div class="sa-text" id="strokeText">HEAT STROKE DETECTED</div>
-            <div class="sa-detail" id="strokeDetail"></div>
-        </div>
+        <div><div class="sa-text" id="strokeText">HEAT STROKE DETECTED</div><div class="sa-detail" id="strokeDetail"></div></div>
     </div>
 
-    <!-- ═══ ROW 1: Traffic + Hit/Miss ═══ -->
+    <!-- ═══ ROW 1: Traffic + Node Topology ═══ -->
     <div class="g2">
         <div class="card">
             <h3>Traffic Over Time</h3>
             <canvas id="trafficChart"></canvas>
         </div>
         <div class="card">
-            <h3>Hit / Miss Ratio</h3>
-            <canvas id="hitMissChart"></canvas>
+            <h3>Network Node Topology</h3>
+            <svg viewBox="0 0 500 250" class="topo-svg" xmlns="http://www.w3.org/2000/svg">
+                <!-- Connection lines (dashed) -->
+                <line x1="250" y1="103" x2="250" y2="50" stroke="#1f3460" stroke-width="2" stroke-dasharray="5,4"/>
+                <line x1="308" y1="125" x2="390" y2="125" stroke="#1f3460" stroke-width="2" stroke-dasharray="5,4"/>
+                <line x1="250" y1="147" x2="250" y2="200" stroke="#1f3460" stroke-width="2" stroke-dasharray="5,4"/>
+                <line x1="192" y1="125" x2="110" y2="125" stroke="#1f3460" stroke-width="2" stroke-dasharray="5,4"/>
+
+                <!-- Flow labels on connections -->
+                <text x="262" y="80" fill="#546e7a" font-size="8" id="flowLabelA">0 req/s</text>
+                <text x="348" y="118" fill="#546e7a" font-size="8" text-anchor="middle" id="flowLabelB">0 req/s</text>
+                <text x="262" y="178" fill="#546e7a" font-size="8" id="flowLabelC">0 req/s</text>
+                <text x="152" y="118" fill="#546e7a" font-size="8" text-anchor="middle" id="flowLabelD">0 req/s</text>
+
+                <!-- Animated flow dots: LB → Node A (up) -->
+                <circle r="2.5" fill="#00d4ff" id="fA1"><animate attributeName="cy" values="103;50" dur="1.6s" repeatCount="indefinite" begin="0s"/><animate attributeName="cx" values="250;250" dur="1.6s" repeatCount="indefinite" begin="0s"/><animate attributeName="opacity" values="0;.8;.8;0" dur="1.6s" repeatCount="indefinite" begin="0s"/></circle>
+                <circle r="2.5" fill="#00d4ff" id="fA2"><animate attributeName="cy" values="103;50" dur="1.6s" repeatCount="indefinite" begin="0.53s"/><animate attributeName="cx" values="250;250" dur="1.6s" repeatCount="indefinite" begin="0.53s"/><animate attributeName="opacity" values="0;.8;.8;0" dur="1.6s" repeatCount="indefinite" begin="0.53s"/></circle>
+                <circle r="2.5" fill="#00d4ff" id="fA3"><animate attributeName="cy" values="103;50" dur="1.6s" repeatCount="indefinite" begin="1.06s"/><animate attributeName="cx" values="250;250" dur="1.6s" repeatCount="indefinite" begin="1.06s"/><animate attributeName="opacity" values="0;.8;.8;0" dur="1.6s" repeatCount="indefinite" begin="1.06s"/></circle>
+
+                <!-- Animated flow dots: LB → Node B (right) -->
+                <circle r="2.5" fill="#00d4ff" id="fB1"><animate attributeName="cx" values="308;390" dur="1.6s" repeatCount="indefinite" begin="0s"/><animate attributeName="cy" values="125;125" dur="1.6s" repeatCount="indefinite" begin="0s"/><animate attributeName="opacity" values="0;.8;.8;0" dur="1.6s" repeatCount="indefinite" begin="0s"/></circle>
+                <circle r="2.5" fill="#00d4ff" id="fB2"><animate attributeName="cx" values="308;390" dur="1.6s" repeatCount="indefinite" begin="0.53s"/><animate attributeName="cy" values="125;125" dur="1.6s" repeatCount="indefinite" begin="0.53s"/><animate attributeName="opacity" values="0;.8;.8;0" dur="1.6s" repeatCount="indefinite" begin="0.53s"/></circle>
+                <circle r="2.5" fill="#00d4ff" id="fB3"><animate attributeName="cx" values="308;390" dur="1.6s" repeatCount="indefinite" begin="1.06s"/><animate attributeName="cy" values="125;125" dur="1.6s" repeatCount="indefinite" begin="1.06s"/><animate attributeName="opacity" values="0;.8;.8;0" dur="1.6s" repeatCount="indefinite" begin="1.06s"/></circle>
+
+                <!-- Animated flow dots: LB → Node C (down) -->
+                <circle r="2.5" fill="#00d4ff" id="fC1"><animate attributeName="cy" values="147;200" dur="1.6s" repeatCount="indefinite" begin="0s"/><animate attributeName="cx" values="250;250" dur="1.6s" repeatCount="indefinite" begin="0s"/><animate attributeName="opacity" values="0;.8;.8;0" dur="1.6s" repeatCount="indefinite" begin="0s"/></circle>
+                <circle r="2.5" fill="#00d4ff" id="fC2"><animate attributeName="cy" values="147;200" dur="1.6s" repeatCount="indefinite" begin="0.53s"/><animate attributeName="cx" values="250;250" dur="1.6s" repeatCount="indefinite" begin="0.53s"/><animate attributeName="opacity" values="0;.8;.8;0" dur="1.6s" repeatCount="indefinite" begin="0.53s"/></circle>
+                <circle r="2.5" fill="#00d4ff" id="fC3"><animate attributeName="cy" values="147;200" dur="1.6s" repeatCount="indefinite" begin="1.06s"/><animate attributeName="cx" values="250;250" dur="1.6s" repeatCount="indefinite" begin="1.06s"/><animate attributeName="opacity" values="0;.8;.8;0" dur="1.6s" repeatCount="indefinite" begin="1.06s"/></circle>
+
+                <!-- Animated flow dots: LB → Node D (left) -->
+                <circle r="2.5" fill="#00d4ff" id="fD1"><animate attributeName="cx" values="192;110" dur="1.6s" repeatCount="indefinite" begin="0s"/><animate attributeName="cy" values="125;125" dur="1.6s" repeatCount="indefinite" begin="0s"/><animate attributeName="opacity" values="0;.8;.8;0" dur="1.6s" repeatCount="indefinite" begin="0s"/></circle>
+                <circle r="2.5" fill="#00d4ff" id="fD2"><animate attributeName="cx" values="192;110" dur="1.6s" repeatCount="indefinite" begin="0.53s"/><animate attributeName="cy" values="125;125" dur="1.6s" repeatCount="indefinite" begin="0.53s"/><animate attributeName="opacity" values="0;.8;.8;0" dur="1.6s" repeatCount="indefinite" begin="0.53s"/></circle>
+                <circle r="2.5" fill="#00d4ff" id="fD3"><animate attributeName="cx" values="192;110" dur="1.6s" repeatCount="indefinite" begin="1.06s"/><animate attributeName="cy" values="125;125" dur="1.6s" repeatCount="indefinite" begin="1.06s"/><animate attributeName="opacity" values="0;.8;.8;0" dur="1.6s" repeatCount="indefinite" begin="1.06s"/></circle>
+
+                <!-- Load Balancer (center) -->
+                <rect x="192" y="103" width="116" height="44" rx="8" fill="#0e1a2e" stroke="#00d4ff" stroke-width="2"/>
+                <text x="250" y="121" text-anchor="middle" fill="#00d4ff" font-size="10" font-weight="700">Load Balancer</text>
+                <text x="250" y="138" text-anchor="middle" fill="#546e7a" font-size="8" id="topoLB">0 ops/s</text>
+
+                <!-- Node A (top) S0-S7 -->
+                <rect x="200" y="10" width="100" height="38" rx="6" fill="#0e1a2e" stroke="#1f3460" stroke-width="1.5" id="topoRectA"/>
+                <text x="250" y="26" text-anchor="middle" fill="#64b5f6" font-size="9" font-weight="700">Node A</text>
+                <text x="250" y="40" text-anchor="middle" fill="#546e7a" font-size="7.5" id="topoInfoA">S0-S7 | 0 req</text>
+
+                <!-- Node B (right) S8-S15 -->
+                <rect x="390" y="106" width="100" height="38" rx="6" fill="#0e1a2e" stroke="#1f3460" stroke-width="1.5" id="topoRectB"/>
+                <text x="440" y="122" text-anchor="middle" fill="#64b5f6" font-size="9" font-weight="700">Node B</text>
+                <text x="440" y="136" text-anchor="middle" fill="#546e7a" font-size="7.5" id="topoInfoB">S8-S15 | 0 req</text>
+
+                <!-- Node C (bottom) S16-S23 -->
+                <rect x="200" y="202" width="100" height="38" rx="6" fill="#0e1a2e" stroke="#1f3460" stroke-width="1.5" id="topoRectC"/>
+                <text x="250" y="218" text-anchor="middle" fill="#64b5f6" font-size="9" font-weight="700">Node C</text>
+                <text x="250" y="232" text-anchor="middle" fill="#546e7a" font-size="7.5" id="topoInfoC">S16-S23 | 0 req</text>
+
+                <!-- Node D (left) S24-S31 -->
+                <rect x="10" y="106" width="100" height="38" rx="6" fill="#0e1a2e" stroke="#1f3460" stroke-width="1.5" id="topoRectD"/>
+                <text x="60" y="122" text-anchor="middle" fill="#64b5f6" font-size="9" font-weight="700">Node D</text>
+                <text x="60" y="136" text-anchor="middle" fill="#546e7a" font-size="7.5" id="topoInfoD">S24-S31 | 0 req</text>
+            </svg>
         </div>
     </div>
 
-    <!-- ═══ ROW 2: Heatmap + PINN Predicted ═══ -->
+    <!-- ═══ ROW 2: Merged Heatmap+Lock + PINN ═══ -->
     <div class="g2">
         <div class="card">
-            <h3>32-Segment Heat Map</h3>
-            <div class="heatmap" id="heatmap"></div>
-            <div class="hm-legend">
-                <span><div class="sw seg-cold"></div> Cold &lt;25%</span>
-                <span><div class="sw seg-warm"></div> Warm 25-60%</span>
-                <span><div class="sw seg-hot"></div> Hot 60-80%</span>
-                <span><div class="sw seg-stroke"></div> Stroke &gt;80%</span>
+            <h3>Segment Status &mdash; Heat &amp; Lock</h3>
+            <div class="sg-grid" id="segGrid"></div>
+            <div class="sg-legend">
+                <span><div class="sw" style="background:#1a3a5c"></div> Cold</span>
+                <span><div class="sw" style="background:#2e4a1e"></div> Warm</span>
+                <span><div class="sw" style="background:#5c3a0a"></div> Hot</span>
+                <span><div class="sw" style="background:#5c1a1a"></div> Stroke</span>
+                <span style="color:#1f3460">|</span>
+                <span><div class="sw" style="border:2px solid transparent;background:#12122a"></div> FREE</span>
+                <span><div class="sw" style="border:2px solid #2196F3;background:#12122a"></div> SHARED</span>
+                <span><div class="sw" style="border:2px solid #ff9800;background:#12122a"></div> EXCL</span>
+                <span><div class="sw" style="border:2px solid #f44336;background:#12122a"></div> CONTEND</span>
             </div>
         </div>
         <div class="card" style="border-color:#4a1a7a">
-            <h3 style="color:#bb86fc">PINN &mdash; Actual vs Predicted Heat</h3>
+            <h3 style="color:#bb86fc">PINN &mdash; Actual vs Predicted Heat <span class="pinn-eq-inline">&part;u/&part;t + u&middot;&part;u/&part;x = &nu;&middot;&part;&sup2;u/&part;x&sup2;</span></h3>
             <canvas id="pinnChart"></canvas>
         </div>
     </div>
 
-    <!-- ═══ ROW 3: WB Pipeline + Lock Matrix ═══ -->
+    <!-- ═══ ROW 3: WB Pipeline + Events | Request Log ═══ -->
     <div class="g2">
         <div class="card" style="border-color:#1a5a3a">
             <h3 style="color:#4caf50">Write-Back Pipeline</h3>
@@ -239,28 +277,13 @@
                 <div class="wb-arr" id="wbA4">&#9654;</div>
                 <div class="wb-stg"><div class="wb-box a" id="wbS5"><div style="color:#4caf50">Disk</div><div class="wb-v" id="wbV5">OK</div><div class="wb-l">persisted</div></div></div>
             </div>
-        </div>
-        <div class="card" style="border-color:#5a3a1a">
-            <h3 style="color:#ff9800">Segment Lock State (32 Mutexes)</h3>
-            <div class="lock-grid" id="lockGrid"></div>
-            <div class="lk-legend">
-                <span><div class="sw lk-free"></div> FREE</span>
-                <span><div class="sw lk-shared"></div> SHARED</span>
-                <span><div class="sw lk-excl"></div> EXCL</span>
-                <span><div class="sw lk-cont"></div> CONTENDED</span>
-            </div>
-        </div>
-    </div>
-
-    <!-- ═══ ROW 4: Unified Event Log + Request Log ═══ -->
-    <div class="g2">
-        <div class="card">
-            <h3>System Events (PINN + WB + Lock)</h3>
+            <div class="wb-divider"></div>
+            <div class="wb-ev-title">System Events (PINN + WB + Lock)</div>
             <div class="evlog" id="evLog"></div>
         </div>
         <div class="card">
             <h3>Live Request Log</h3>
-            <div class="evlog" id="reqLog"></div>
+            <div class="evlog" id="reqLog" style="max-height:340px"></div>
         </div>
     </div>
 
@@ -274,6 +297,7 @@ const API = 'http://127.0.0.1:8080';
 let prevOps=0, prevHits=0, prevMisses=0;
 let trafficHistory = [];
 const MAX_HIST = 60;
+const S = Array.from({length:32},function(_,i){return 'S'+i});
 
 /* ════════════════════════════════════════════════════════════════
    CHARTS
@@ -281,9 +305,7 @@ const MAX_HIST = 60;
 Chart.defaults.color = '#546e7a';
 Chart.defaults.borderColor = 'rgba(31,52,96,0.5)';
 
-const S = Array.from({length:32},(_,i)=>'S'+i);
-
-const trafficChart = new Chart(document.getElementById('trafficChart'),{
+var trafficChart = new Chart(document.getElementById('trafficChart'),{
     type:'line',
     data:{labels:[],datasets:[
         {label:'Ops/s',  data:[],borderColor:'#00d4ff',backgroundColor:'rgba(0,212,255,.06)',tension:.4,fill:true,pointRadius:0},
@@ -293,13 +315,7 @@ const trafficChart = new Chart(document.getElementById('trafficChart'),{
     options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{boxWidth:10,font:{size:10}}}},scales:{y:{beginAtZero:true}}}
 });
 
-const hitMissChart = new Chart(document.getElementById('hitMissChart'),{
-    type:'doughnut',
-    data:{labels:['Hits','Misses'],datasets:[{data:[1,0],backgroundColor:['#4caf50','#f44336'],borderWidth:0}]},
-    options:{responsive:true,maintainAspectRatio:false,cutout:'65%',plugins:{legend:{position:'bottom',labels:{font:{size:10}}}}}
-});
-
-const pinnChart = new Chart(document.getElementById('pinnChart'),{
+var pinnChart = new Chart(document.getElementById('pinnChart'),{
     type:'bar',
     data:{labels:S,datasets:[
         {label:'Actual Heat',   data:new Array(32).fill(0),backgroundColor:'rgba(0,212,255,.45)',borderColor:'#00d4ff',borderWidth:1,borderRadius:2},
@@ -309,42 +325,111 @@ const pinnChart = new Chart(document.getElementById('pinnChart'),{
 });
 
 /* ════════════════════════════════════════════════════════════════
-   INIT HEATMAP + LOCK GRID
+   INIT MERGED SEGMENT GRID (Heat + Lock)
    ════════════════════════════════════════════════════════════════ */
-const hmEl = document.getElementById('heatmap');
-for(let i=0;i<32;i++){const d=document.createElement('div');d.className='seg seg-cold';d.id='seg-'+i;d.innerHTML='S'+i+'<div class="sh">0%</div>';hmEl.appendChild(d)}
-
-const lgEl = document.getElementById('lockGrid');
-const lkClasses=['lk-free','lk-shared','lk-excl','lk-cont'];
-const lkNames=['FREE','SHARED','EXCL','CONTEND'];
-for(let i=0;i<32;i++){const d=document.createElement('div');d.className='lk lk-free';d.id='lk-'+i;d.innerHTML='S'+i+'<div class="lk-sub">FREE</div>';lgEl.appendChild(d)}
+var sgEl = document.getElementById('segGrid');
+var sgHeatClasses = ['sg-cold','sg-warm','sg-hot','sg-stroke'];
+var sgLkClasses   = ['sg-lk-free','sg-lk-shared','sg-lk-excl','sg-lk-cont'];
+var sgLkNames     = ['FREE','SHARED','EXCL','CONTEND'];
+for (var i=0; i<32; i++){
+    var d = document.createElement('div');
+    d.className = 'sg sg-cold sg-lk-free';
+    d.id = 'sg-'+i;
+    d.innerHTML = 'S'+i+'<div class="sg-heat">0%</div><div class="sg-lock">FREE</div>';
+    sgEl.appendChild(d);
+}
 
 /* ════════════════════════════════════════════════════════════════
-   BURST CONTROLS
+   NODE TOPOLOGY HELPERS
    ════════════════════════════════════════════════════════════════ */
-async function fireBurst(){
-    const seg=document.getElementById('burstSeg').value;
-    const pow=document.getElementById('burstPow').value;
-    try{await fetch(API+'/burst?seg='+seg+'&intensity='+pow);document.getElementById('burstStatus').textContent='Burst on S'+seg;document.getElementById('burstStatus').style.color='#f44336'}catch(e){}
+var nodeColors = {cold:'#1f3460', warm:'#2e7d32', hot:'#e65100', stroke:'#c62828'};
+var flowDotColors = {cold:'#00d4ff', warm:'#4caf50', hot:'#ff9800', stroke:'#f44336'};
+
+function getNodeHeatLevel(maxH){
+    if(maxH>80) return 'stroke';
+    if(maxH>60) return 'hot';
+    if(maxH>25) return 'warm';
+    return 'cold';
 }
+
+function updateNodeTopo(segReq, segHeat, opsPerSec){
+    var ranges = [{id:'A',start:0,end:7},{id:'B',start:8,end:15},{id:'C',start:16,end:23},{id:'D',start:24,end:31}];
+    for(var n=0; n<ranges.length; n++){
+        var r = ranges[n];
+        var reqSum=0, maxH=0;
+        for(var i=r.start; i<=r.end; i++){
+            reqSum += (segReq[i]||0);
+            if((segHeat[i]||0) > maxH) maxH = segHeat[i]||0;
+        }
+        var level = getNodeHeatLevel(maxH);
+        var rect = document.getElementById('topoRect'+r.id);
+        rect.setAttribute('stroke', nodeColors[level]);
+        if(level==='stroke'){rect.setAttribute('stroke-width','2.5')} else {rect.setAttribute('stroke-width','1.5')}
+
+        var info = document.getElementById('topoInfo'+r.id);
+        info.textContent = 'S'+r.start+'-S'+r.end+' | '+reqSum.toLocaleString()+' req';
+
+        // Update flow dot colors
+        var dotColor = flowDotColors[level];
+        for(var di=1; di<=3; di++){
+            var dot = document.getElementById('f'+r.id+di);
+            if(dot) dot.setAttribute('fill', dotColor);
+        }
+
+        // Update flow labels
+        var fl = document.getElementById('flowLabel'+r.id);
+        if(fl){
+            var pct = opsPerSec>0 ? Math.round(reqSum / Math.max(1, segReq.reduce(function(a,b){return a+b},0)) * opsPerSec) : 0;
+            fl.textContent = pct + ' req/s';
+        }
+    }
+    // LB center label
+    document.getElementById('topoLB').textContent = opsPerSec + ' ops/s';
+}
+
+/* ════════════════════════════════════════════════════════════════
+   BURST CONTROLS (MULTI-SEGMENT)
+   ════════════════════════════════════════════════════════════════ */
+function setPreset(btn, segs){
+    document.getElementById('burstSegs').value = segs;
+    var all = document.querySelectorAll('.bpreset');
+    for(var i=0;i<all.length;i++) all[i].classList.remove('active');
+    btn.classList.add('active');
+}
+
+async function fireBurst(){
+    var segsStr = document.getElementById('burstSegs').value;
+    var pow = document.getElementById('burstPow').value;
+    var segs = segsStr.split(',').map(function(s){return s.trim()}).filter(function(s){return s!=='' && !isNaN(s)});
+    if(segs.length===0) return;
+    try{
+        await fetch(API+'/burst?seg='+segs.join(',')+('&intensity=')+pow);
+        document.getElementById('burstStatus').textContent = 'Burst on '+segs.map(function(s){return 'S'+s}).join(', ');
+        document.getElementById('burstStatus').style.color = '#f44336';
+    }catch(e){}
+}
+
 async function stopBurst(){
-    try{await fetch(API+'/burst/stop');document.getElementById('burstStatus').textContent='Ready';document.getElementById('burstStatus').style.color='#546e7a'}catch(e){}
+    try{await fetch(API+'/burst/stop');
+        document.getElementById('burstStatus').textContent='Ready';
+        document.getElementById('burstStatus').style.color='#546e7a';
+    }catch(e){}
 }
 
 /* ════════════════════════════════════════════════════════════════
    UNIFIED EVENT LOG
    ════════════════════════════════════════════════════════════════ */
-const unifiedEvents = [];
+var unifiedEvents = [];
 function pushEvent(type, seg, action, detail){
-    const t = new Date().toLocaleTimeString('en-US',{hour12:false});
+    var t = new Date().toLocaleTimeString('en-US',{hour12:false});
     unifiedEvents.unshift({type:type,time:t,seg:seg,action:action,detail:detail});
     if(unifiedEvents.length > 60) unifiedEvents.length = 60;
 }
 function renderEvents(){
-    const el = document.getElementById('evLog');
+    var el = document.getElementById('evLog');
     el.innerHTML = '';
-    unifiedEvents.slice(0,35).forEach(function(e){
-        const d = document.createElement('div');
+    unifiedEvents.slice(0,30).forEach(function(e){
+        var d = document.createElement('div');
         d.className = 'ev ev-' + e.type;
         d.innerHTML = '<span class="ev-t">'+e.time+'</span><span class="ev-s">S'+e.seg+'</span><span class="ev-a">'+e.action+'</span><span class="ev-d">'+e.detail+'</span>';
         el.appendChild(d);
@@ -355,11 +440,11 @@ function renderEvents(){
    REQUEST LOG
    ════════════════════════════════════════════════════════════════ */
 function addReqLog(cmd, key, lat, isHit){
-    const el = document.getElementById('reqLog');
-    const t = new Date().toLocaleTimeString('en-US',{hour12:false});
-    const hitTxt = isHit===true?' HIT':isHit===false?' MISS':'';
-    const hitCl  = isHit===true?'c-green':isHit===false?'c-orange':'';
-    const d = document.createElement('div');
+    var el = document.getElementById('reqLog');
+    var t = new Date().toLocaleTimeString('en-US',{hour12:false});
+    var hitTxt = isHit===true?' HIT':isHit===false?' MISS':'';
+    var hitCl  = isHit===true?'c-green':isHit===false?'c-orange':'';
+    var d = document.createElement('div');
     d.className='ev ev-req';
     d.innerHTML='<span class="ev-t">'+t+'</span><span class="ev-s" style="color:'+(cmd==='SET'?'#4caf50':cmd==='DEL'?'#f44336':'#00d4ff')+'">'+cmd+'</span><span class="ev-a">'+key+'</span>'+(hitTxt?'<span class="'+hitCl+'" style="font-size:.85em">'+hitTxt+'</span>':'')+'<span class="ev-d" style="margin-left:auto">'+lat.toFixed(1)+'ms</span>';
     el.prepend(d);
@@ -369,24 +454,24 @@ function addReqLog(cmd, key, lat, isHit){
 /* ════════════════════════════════════════════════════════════════
    MAIN POLL
    ════════════════════════════════════════════════════════════════ */
-let prevPinnEvents=0, prevWbEvents=0, prevLockEvents=0;
+var prevPinnEvents=0, prevWbEvents=0, prevLockEvents=0;
 
 async function poll(){
     try{
-        const r = await fetch(API+'/metrics');
-        const d = await r.json();
+        var r = await fetch(API+'/metrics');
+        var d = await r.json();
 
         // ── Connection badge ──
         document.getElementById('badge').className='badge on';
         document.getElementById('badgeTxt').textContent='Connected';
 
         // ── KPIs ──
-        const ops = d.total_ops||0;
-        const dOps = Math.max(0, ops-prevOps); prevOps=ops;
-        const hits = d.cache_hits||0, misses=d.cache_misses||0;
-        const total = hits+misses;
-        const hitRate = total>0 ? (100*hits/total) : 0;
-        const dHits = Math.max(0,hits-prevHits), dMiss = Math.max(0,misses-prevMisses);
+        var ops = d.total_ops||0;
+        var dOps = Math.max(0, ops-prevOps); prevOps=ops;
+        var hits = d.cache_hits||0, misses=d.cache_misses||0;
+        var total = hits+misses;
+        var hitRate = total>0 ? (100*hits/total) : 0;
+        var dHits = Math.max(0,hits-prevHits), dMiss = Math.max(0,misses-prevMisses);
         prevHits=hits; prevMisses=misses;
 
         document.getElementById('kTotalOps').textContent = ops.toLocaleString();
@@ -398,7 +483,7 @@ async function poll(){
         document.getElementById('kKeys').textContent = (d.current_keys||0).toLocaleString();
 
         // ── Traffic chart ──
-        const tl = new Date().toLocaleTimeString('en-US',{hour12:false});
+        var tl = new Date().toLocaleTimeString('en-US',{hour12:false});
         trafficHistory.push({t:tl,o:dOps,h:dHits,m:dMiss});
         if(trafficHistory.length>MAX_HIST) trafficHistory.shift();
         trafficChart.data.labels = trafficHistory.map(function(x){return x.t});
@@ -407,48 +492,65 @@ async function poll(){
         trafficChart.data.datasets[2].data = trafficHistory.map(function(x){return x.m});
         trafficChart.update('none');
 
-        // ── Hit/Miss donut ──
-        hitMissChart.data.datasets[0].data = [hits||1, misses];
-        hitMissChart.update('none');
-
-        // ── Segments ──
-        const segHeat = d.segment_heat || new Array(32).fill(0);
-        for(let i=0;i<32;i++){
-            const el=document.getElementById('seg-'+i);
-            const h=segHeat[i];
-            el.className='seg '+(h>80?'seg-stroke':h>60?'seg-hot':h>25?'seg-warm':'seg-cold');
-            el.querySelector('.sh').textContent=Math.round(h)+'%';
-        }
+        // ── Segment data ──
+        var segHeat = d.segment_heat || new Array(32).fill(0);
+        var segReq  = d.segment_requests || new Array(32).fill(0);
 
         // ── PINN ──
-        const pinn = d.pinn;
-        const strokeSegs = (pinn && pinn.stroke_segments) || [];
+        var pinn = d.pinn;
+        var strokeSegs = (pinn && pinn.stroke_segments) || [];
+
+        // ── Locks ──
+        var locks = d.locks;
+        var ls = locks ? (locks.state || new Array(32).fill(0)) : new Array(32).fill(0);
+        var lw = locks ? (locks.wait_ms || new Array(32).fill(0)) : new Array(32).fill(0);
+        var lc = locks ? (locks.contentions || new Array(32).fill(0)) : new Array(32).fill(0);
+        var totalCont=0, contSegs=0;
+
+        // ── Merged Segment Grid (Heat + Lock) ──
+        for(var i=0; i<32; i++){
+            var el = document.getElementById('sg-'+i);
+            var h = segHeat[i];
+            var isStroke = strokeSegs.indexOf(i) !== -1;
+            var heatCl = isStroke ? 'sg-stroke' : (h>80?'sg-stroke':h>60?'sg-hot':h>25?'sg-warm':'sg-cold');
+            var lockCl = sgLkClasses[ls[i]] || 'sg-lk-free';
+            el.className = 'sg ' + heatCl + ' ' + lockCl;
+            el.querySelector('.sg-heat').textContent = Math.round(h)+'%';
+            var lockLabel = lw[i] > 0.5 ? lw[i].toFixed(1)+'ms' : sgLkNames[ls[i]];
+            el.querySelector('.sg-lock').textContent = lockLabel;
+            totalCont += lc[i];
+            if(ls[i]===3) contSegs++;
+        }
+
+        document.getElementById('kContentions').textContent = totalCont.toLocaleString();
+
+        // ── Node Topology ──
+        updateNodeTopo(segReq, segHeat, dOps);
+
+        // ── PINN chart ──
         if(pinn){
-            const actual = pinn.u || segHeat;
-            const predicted = pinn.predicted || new Array(32).fill(0);
+            var actual = pinn.u || segHeat;
+            var predicted = pinn.predicted || new Array(32).fill(0);
             pinnChart.data.datasets[0].data = actual;
             pinnChart.data.datasets[1].data = predicted;
             pinnChart.data.datasets[1].backgroundColor = predicted.map(function(p){return p>(pinn.threshold||75)?'rgba(244,67,54,.65)':'rgba(244,67,54,.2)'});
             pinnChart.update('none');
 
-            // PINN stroke overlay on heatmap
-            for(let i=0;i<32;i++){if(strokeSegs.includes(i)){document.getElementById('seg-'+i).className='seg seg-stroke'}}
-
             // Stroke alert
-            const alertEl = document.getElementById('strokeAlert');
+            var alertEl = document.getElementById('strokeAlert');
             if(strokeSegs.length>0){
                 alertEl.className='stroke-alert active';
                 document.getElementById('strokeText').textContent='HEAT STROKE: '+strokeSegs.map(function(s){return 'S'+s}).join(', ');
-                const maxP = Math.max.apply(null,strokeSegs.map(function(s){return predicted[s]||0}));
+                var maxP = Math.max.apply(null,strokeSegs.map(function(s){return predicted[s]||0}));
                 document.getElementById('strokeDetail').textContent='Predicted '+maxP.toFixed(1)+'% > '+(pinn.threshold||75)+'% threshold | Burgers residual anomaly | WB emergency flush + Lock contention';
             } else { alertEl.className='stroke-alert' }
 
             // Status bar: PINN
-            const sbP = document.getElementById('sbPinn');
+            var sbP = document.getElementById('sbPinn');
             if(strokeSegs.length>0){sbP.textContent='STROKE ('+strokeSegs.length+')';sbP.className='sb-val c-red'}
             else{sbP.textContent='Normal';sbP.className='sb-val c-purple'}
 
-            // New PINN events -> unified log
+            // PINN events -> unified log
             var pinnEvts = pinn.events || [];
             if(pinnEvts.length > prevPinnEvents){
                 for(var pe=prevPinnEvents; pe<pinnEvts.length; pe++){
@@ -460,16 +562,15 @@ async function poll(){
         }
 
         // ── Write-Back ──
-        const wb = d.writeback;
+        var wb = d.writeback;
         if(wb){
-            const qd = wb.queue_depth || new Array(32).fill(0);
-            const fr = wb.flush_rate || new Array(32).fill(0);
-            const dr = wb.dirty_ratio || new Array(32).fill(0);
-
+            var qd = wb.queue_depth || new Array(32).fill(0);
+            var fr = wb.flush_rate || new Array(32).fill(0);
+            var dr = wb.dirty_ratio || new Array(32).fill(0);
             document.getElementById('kFlushed').textContent = (wb.total_flushed||0).toLocaleString();
 
-            // Pipeline vis
-            var tSeg = strokeSegs.length>0 ? strokeSegs[0] : parseInt(document.getElementById('burstSeg').value)||14;
+            // Pipeline vis — focus on hottest segment
+            var tSeg = strokeSegs.length>0 ? strokeSegs[0] : 14;
             var tQ=qd[tSeg]||0, tF=fr[tSeg]||0, tD=dr[tSeg]||0, tH=segHeat[tSeg]||0;
             document.getElementById('wbV1').textContent = Math.round(tH*0.15);
             document.getElementById('wbV2').textContent = Math.round(tD)+'%';
@@ -477,7 +578,6 @@ async function poll(){
             document.getElementById('wbV4').textContent = tF.toFixed(1);
             document.getElementById('wbV5').textContent = tF>10?'BUSY':'OK';
             document.getElementById('wbV5').style.color = tF>10?'#ff9800':'#4caf50';
-
             document.getElementById('wbS3').className='wb-box'+(tQ>100?' s':tQ>30?' h':tQ>5?' a':'');
             document.getElementById('wbS4').className='wb-box'+(tF>10?' s':tF>5?' h':' a');
             document.getElementById('wbS5').className='wb-box'+(tF>10?' h':' a');
@@ -494,7 +594,7 @@ async function poll(){
             else if(maxQ>5){sbW.textContent='Draining';sbW.className='sb-val c-blue'}
             else{sbW.textContent='Idle';sbW.className='sb-val c-green'}
 
-            // New WB events -> unified log
+            // WB events -> unified log
             var wbEvts = wb.events || [];
             if(wbEvts.length > prevWbEvents){
                 for(var we=prevWbEvents; we<wbEvts.length; we++){
@@ -505,36 +605,17 @@ async function poll(){
             }
         }
 
-        // ── Locks ──
-        const locks = d.locks;
+        // ── Status bar: Locks ──
+        var sbL = document.getElementById('sbLock');
+        if(contSegs>0){sbL.textContent='CONTENDED ('+contSegs+')';sbL.className='sb-val c-red'}
+        else{
+            var exclSegs=0;for(var i=0;i<32;i++){if(ls[i]===2)exclSegs++}
+            if(exclSegs>0){sbL.textContent='Excl ('+exclSegs+')';sbL.className='sb-val c-orange'}
+            else{sbL.textContent='All Free';sbL.className='sb-val c-green'}
+        }
+
+        // Lock events -> unified log
         if(locks){
-            var ls = locks.state || new Array(32).fill(0);
-            var lw = locks.wait_ms || new Array(32).fill(0);
-            var lc = locks.contentions || new Array(32).fill(0);
-            var totalCont = 0;
-            var contSegs = 0;
-
-            for(var i=0;i<32;i++){
-                var el=document.getElementById('lk-'+i);
-                el.className='lk '+lkClasses[ls[i]];
-                var label = lw[i]>0 ? lw[i].toFixed(1)+'ms' : lkNames[ls[i]];
-                el.innerHTML='S'+i+'<div class="lk-sub">'+label+'</div>';
-                totalCont += lc[i];
-                if(ls[i]===3) contSegs++;
-            }
-
-            document.getElementById('kContentions').textContent = totalCont.toLocaleString();
-
-            // Status bar: Lock
-            var sbL = document.getElementById('sbLock');
-            if(contSegs>0){sbL.textContent='CONTENDED ('+contSegs+')';sbL.className='sb-val c-red'}
-            else{
-                var exclSegs=0;for(var i=0;i<32;i++){if(ls[i]===2)exclSegs++}
-                if(exclSegs>0){sbL.textContent='Excl ('+exclSegs+')';sbL.className='sb-val c-orange'}
-                else{sbL.textContent='All Free';sbL.className='sb-val c-green'}
-            }
-
-            // New lock events -> unified log
             var lockEvts = locks.events || [];
             if(lockEvts.length > prevLockEvents){
                 for(var le=prevLockEvents; le<lockEvts.length; le++){
@@ -545,15 +626,13 @@ async function poll(){
             }
         }
 
-        // ── Status bar: Segs count ──
+        // ── Status bar extras ──
         var activeSegs=0;for(var i=0;i<32;i++){if(segHeat[i]>1)activeSegs++}
         document.getElementById('sbSegs').textContent = '32 ('+activeSegs+' hot)';
-
-        // ── Status bar: Mode ──
         document.getElementById('sbMode').textContent = (d.write_back||0)>0?'Write-Back':'Write-Through';
         document.getElementById('sbServer').textContent='ONLINE';document.getElementById('sbServer').className='sb-val c-green';
 
-        // ── Render unified event log ──
+        // ── Render unified events ──
         renderEvents();
 
         // ── Request log entries ──
