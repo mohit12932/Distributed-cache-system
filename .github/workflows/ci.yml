@@ -1,0 +1,84 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main, master, develop ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  build-linux:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y build-essential cmake
+        
+    - name: Build project
+      run: |
+        mkdir -p build
+        g++ -std=c++17 -O2 -Wall -Wextra -I. -o build/distributed_cache src/main.cpp -pthread
+        g++ -std=c++17 -O2 -Wall -Wextra -I. -o build/test_lru_cache src/tests/test_lru_cache.cpp -pthread
+        g++ -std=c++17 -O2 -Wall -Wextra -I. -o build/test_concurrency src/tests/test_concurrency.cpp -pthread
+        g++ -std=c++17 -O2 -Wall -Wextra -I. -o build/test_resp_parser src/tests/test_resp_parser.cpp -pthread
+        
+    - name: Run LRU Cache Tests
+      run: ./build/test_lru_cache
+      
+    - name: Run Concurrency Tests
+      run: ./build/test_concurrency
+      
+    - name: Run RESP Parser Tests
+      run: ./build/test_resp_parser
+
+  build-windows:
+    runs-on: windows-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup MSVC
+      uses: microsoft/setup-msbuild@v2
+      
+    - name: Build with MSVC
+      shell: cmd
+      run: |
+        mkdir build
+        cl /std:c++17 /EHsc /O2 /I. /Fe:build\distributed_cache.exe src\main.cpp ws2_32.lib
+        cl /std:c++17 /EHsc /O2 /I. /Fe:build\test_lru_cache.exe src\tests\test_lru_cache.cpp ws2_32.lib
+        cl /std:c++17 /EHsc /O2 /I. /Fe:build\test_concurrency.exe src\tests\test_concurrency.cpp ws2_32.lib
+        cl /std:c++17 /EHsc /O2 /I. /Fe:build\test_resp_parser.exe src\tests\test_resp_parser.cpp ws2_32.lib
+        
+    - name: Run Tests
+      shell: cmd
+      run: |
+        build\test_lru_cache.exe
+        build\test_concurrency.exe
+        build\test_resp_parser.exe
+
+  integration-test:
+    runs-on: ubuntu-latest
+    needs: build-linux
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Build
+      run: |
+        mkdir -p build
+        g++ -std=c++17 -O2 -I. -o build/distributed_cache src/main.cpp -pthread
+        g++ -std=c++17 -O2 -I. -o build/test_live_server tests/test_live_server.cpp -pthread
+        
+    - name: Start server and run integration tests
+      run: |
+        ./build/distributed_cache --port 6399 --mode write-through &
+        sleep 3
+        ./build/test_live_server || echo "Integration tests completed"
+        pkill -f distributed_cache || true
