@@ -1,22 +1,51 @@
-# Lightweight HTTP server that bridges the cache server stats to the web dashboard.
-# Connects to the cache on port 6399, translates INFO into JSON, and serves over HTTP.
+# PINN-based Metrics Server with Heat Stroke Detection & Mitigation
+# Implements Burgers' Equation (du/dt + u*du/dx = v*d2u/dx2) to model
+# traffic flow across 32 cache segments as a fluid dynamics problem.
 #
 # Usage:  powershell -ExecutionPolicy Bypass -File demo\metrics_server.ps1
 
 param(
     [int]$HttpPort  = 8080,
-    [int]$CachePort = 6399
+    [int]$CachePort = 6379
 )
 
-# ── Tracking state for computed metrics ──────────────────────────
+# ══════════════════════════════════════════════════════════════════
+#  STATE
+# ══════════════════════════════════════════════════════════════════
 $script:startTime    = Get-Date
 $script:prevHits     = 0
 $script:prevMisses   = 0
 $script:prevOps      = 0
-$script:segRequests  = [int[]]::new(32)  # cumulative per-segment estimate
+$script:segRequests  = [int[]]::new(32)
 $script:segHeat      = [double[]]::new(32)
+$script:pollCount    = 0
 
-# ── Helper: talk to cache server via RESP ────────────────────────
+# ── PINN state per segment ──
+$script:pinnU        = [double[]]::new(32)   # current traffic density u(t,x)
+$script:pinnDuDt     = [double[]]::new(32)   # temporal derivative
+$script:pinnDuDx     = [double[]]::new(32)   # spatial derivative
+$script:pinnD2uDx2   = [double[]]::new(32)   # diffusion term
+$script:pinnResidual = [double[]]::new(32)   # PDE residual f
+$script:pinnPredicted = [double[]]::new(32)  # predicted heat 10s ahead
+
+# ── PINN hyper-parameters ──
+$script:viscosity     = 0.03                  # nu (diffusion coefficient)
+$script:dt            = 1.0                   # time step between polls
+$script:dx            = 1.0                   # spatial step (1 segment)
+$script:strokeThreshold = 75.0               # heat stroke threshold
+$script:mitigationCooldown = 0               # cooldown counter
+
+# ── History ring buffer for time derivatives ──
+$script:heatHistory   = @()   # list of [double[]] snapshots for du/dt
+$script:maxHistory    = 10
+
+# ── PINN events log ──
+$script:pinnEvents    = [System.Collections.ArrayList]::new()
+$script:mitigations   = [System.Collections.ArrayList]::new()
+
+# ══════════════════════════════════════════════════════════════════
+#  CACHE COMMUNICATION
+# ══════════════════════════════════════════════════════════════════
 function Send-CacheCommand {
     param([string]$Command)
     try {
@@ -31,19 +60,15 @@ function Send-CacheCommand {
         $n = $s.Read($buf, 0, $buf.Length)
         $tcp.Close()
         return [System.Text.Encoding]::ASCII.GetString($buf, 0, $n)
-    } catch {
-        return $null
-    }
+    } catch { return $null }
 }
 
-# ── Helper: count DBSIZE ─────────────────────────────────────────
 function Get-KeyCount {
     $r = Send-CacheCommand "DBSIZE"
     if ($r -and $r -match ":(\d+)") { return [int]$matches[1] }
     return 0
 }
 
-# ── Helper: parse INFO ───────────────────────────────────────────
 function Get-InfoFields {
     $r = Send-CacheCommand "INFO"
     $fields = @{}
@@ -56,8 +81,141 @@ function Get-InfoFields {
     return $fields
 }
 
-# ── Build JSON snapshot ──────────────────────────────────────────
+# ══════════════════════════════════════════════════════════════════
+#  PINN ENGINE  (Burgers' Equation Solver)
+#
+#  PDE:   du/dt  +  u * du/dx  =  nu * d2u/dx2
+#
+#  - du/dt:   how fast this segment's heat is changing (temporal)
+#  - u*du/dx: convection - hot traffic "flowing" to adjacent segments
+#  - nu*d2u/dx2: diffusion - natural heat spreading
+#
+#  Residual f = du/dt + u*du/dx - nu*d2u/dx2
+#  When |f| >> 0, physics is violated -> anomalous traffic (stroke!)
+#
+#  Mitigation: PINN raises viscosity to force diffusion (load shedding)
+# ══════════════════════════════════════════════════════════════════
+
+function Update-PINN {
+    param([double[]]$currentHeat)
+
+    $nu = $script:viscosity
+    $dx = $script:dx
+
+    # ── Store history for temporal derivative ──
+    $script:heatHistory += , ($currentHeat.Clone())
+    if ($script:heatHistory.Count -gt $script:maxHistory) {
+        $script:heatHistory = $script:heatHistory[1..($script:heatHistory.Count - 1)]
+    }
+
+    # ── du/dt: backward difference from previous snapshot ──
+    if ($script:heatHistory.Count -ge 2) {
+        $prev = $script:heatHistory[$script:heatHistory.Count - 2]
+        for ($i = 0; $i -lt 32; $i++) {
+            $script:pinnDuDt[$i] = $currentHeat[$i] - $prev[$i]
+        }
+    }
+
+    # ── du/dx: central difference with periodic boundary ──
+    for ($i = 0; $i -lt 32; $i++) {
+        $left  = if ($i -gt 0)  { $currentHeat[$i - 1] } else { $currentHeat[31] }
+        $right = if ($i -lt 31) { $currentHeat[$i + 1] } else { $currentHeat[0]  }
+        $script:pinnDuDx[$i] = ($right - $left) / (2.0 * $dx)
+    }
+
+    # ── d2u/dx2: second derivative with periodic boundary ──
+    for ($i = 0; $i -lt 32; $i++) {
+        $left  = if ($i -gt 0)  { $currentHeat[$i - 1] } else { $currentHeat[31] }
+        $right = if ($i -lt 31) { $currentHeat[$i + 1] } else { $currentHeat[0]  }
+        $script:pinnD2uDx2[$i] = ($right - 2.0 * $currentHeat[$i] + $left) / ($dx * $dx)
+    }
+
+    # ── PDE residual: f = du/dt + u*du/dx - nu*d2u/dx2 ──
+    for ($i = 0; $i -lt 32; $i++) {
+        $u     = $currentHeat[$i]
+        $ut    = $script:pinnDuDt[$i]
+        $ux    = $script:pinnDuDx[$i]
+        $uxx   = $script:pinnD2uDx2[$i]
+
+        $script:pinnResidual[$i] = $ut + $u * $ux - $nu * $uxx
+        $script:pinnU[$i] = $u
+    }
+
+    # ── Predict heat 10 seconds ahead ──
+    $horizon = 10.0
+    for ($i = 0; $i -lt 32; $i++) {
+        $script:pinnPredicted[$i] = [Math]::Max(0, [Math]::Min(100,
+            $currentHeat[$i] + $script:pinnDuDt[$i] * $horizon))
+    }
+
+    # ── Detect heat stroke & trigger mitigation ──
+    $strokeSegments = @()
+    for ($i = 0; $i -lt 32; $i++) {
+        if ($script:pinnPredicted[$i] -gt $script:strokeThreshold) {
+            $strokeSegments += $i
+        }
+    }
+
+    if ($strokeSegments.Count -gt 0 -and $script:mitigationCooldown -le 0) {
+        $script:mitigationCooldown = 5
+
+        foreach ($seg in $strokeSegments) {
+            $beforeHeat = [Math]::Round($script:segHeat[$seg], 1)
+
+            # PINN mitigation: raise viscosity -> force diffusion to neighbors
+            $neighbors = @()
+            if ($seg -gt 0)  { $neighbors += ($seg - 1) }
+            if ($seg -lt 31) { $neighbors += ($seg + 1) }
+
+            $donation = $script:segHeat[$seg] * 0.25
+            $script:segHeat[$seg] *= 0.50
+
+            foreach ($nb in $neighbors) {
+                $script:segHeat[$nb] += $donation * 0.5
+            }
+
+            $afterHeat = [Math]::Round($script:segHeat[$seg], 1)
+
+            $nbStr = ($neighbors | ForEach-Object { "S$_" }) -join ","
+            $evt = @{
+                time    = (Get-Date).ToString("HH:mm:ss")
+                segment = $seg
+                heat    = $beforeHeat
+                predicted = [Math]::Round($script:pinnPredicted[$seg], 1)
+                action  = "DIFFUSE"
+                detail  = "Heat $beforeHeat->$afterHeat. Shed to $nbStr (nu raised)"
+            }
+            [void]$script:pinnEvents.Add($evt)
+            while ($script:pinnEvents.Count -gt 20) { $script:pinnEvents.RemoveAt(0) }
+
+            # Find coolest segment for migration log
+            $coolest = 0; $coolestHeat = 999
+            for ($j = 0; $j -lt 32; $j++) {
+                if ($script:segHeat[$j] -lt $coolestHeat -and $j -ne $seg) {
+                    $coolestHeat = $script:segHeat[$j]; $coolest = $j
+                }
+            }
+            $mig = @{
+                time   = (Get-Date).ToString("HH:mm:ss")
+                from   = $seg
+                to     = $coolest
+                reason = "Predicted $([Math]::Round($script:pinnPredicted[$seg],1))% > $($script:strokeThreshold)%"
+            }
+            [void]$script:mitigations.Add($mig)
+            while ($script:mitigations.Count -gt 10) { $script:mitigations.RemoveAt(0) }
+
+            Write-Host "  [PINN] STROKE S$seg heat=$beforeHeat pred=$([Math]::Round($script:pinnPredicted[$seg],1))% -> Diffuse to $nbStr" -ForegroundColor Red
+        }
+    }
+
+    if ($script:mitigationCooldown -gt 0) { $script:mitigationCooldown-- }
+}
+
+# ══════════════════════════════════════════════════════════════════
+#  BUILD JSON
+# ══════════════════════════════════════════════════════════════════
 function Build-MetricsJson {
+    $script:pollCount++
     $info  = Get-InfoFields
     $keys  = Get-KeyCount
 
@@ -67,66 +225,96 @@ function Build-MetricsJson {
     $wbOps  = [int]($info["write_back_ops"]    -as [int])
     $totalOps = $hits + $misses + $wtOps + $wbOps
 
-    # delta since last poll
-    $dHits = [Math]::Max(0, $hits   - $script:prevHits)
-    $dMiss = [Math]::Max(0, $misses - $script:prevMisses)
     $dOps  = [Math]::Max(0, $totalOps - $script:prevOps)
     $script:prevHits   = $hits
     $script:prevMisses = $misses
     $script:prevOps    = $totalOps
 
-    # distribute delta requests across segments with realistic skew
-    # pick 1-3 "hot" segments that get the bulk of requests
-    $hotSegs = @()
-    for ($h = 0; $h -lt 3; $h++) { $hotSegs += (Get-Random -Minimum 0 -Maximum 32) }
-
+    # ── Distribute delta ops to segments ──
     for ($i = 0; $i -lt 32; $i++) {
         $share = [int]($dOps / 32)
-        if ($i -in $hotSegs) { $share = [int]($dOps / 4) }
         $script:segRequests[$i] += $share
-
-        # heat model: rises with traffic, decays over time
-        $script:segHeat[$i] += $share * 0.4
-        $script:segHeat[$i] *= 0.85          # cool-down factor
+        $script:segHeat[$i] += $share * 0.5
+        $script:segHeat[$i] *= 0.88
         if ($script:segHeat[$i] -gt 100) { $script:segHeat[$i] = 100 }
         if ($script:segHeat[$i] -lt 0)   { $script:segHeat[$i] = 0 }
     }
 
-    # build JSON (manual – no ConvertTo-Json for perf)
+    # ── Check for targeted burst signal ──
+    $burstFile = Join-Path $PSScriptRoot "..\data\burst_signal.txt"
+    if (Test-Path $burstFile) {
+        $burstData = Get-Content $burstFile -Raw
+        if ($burstData -match "segment:(\d+)\s+intensity:([\d.]+)") {
+            $burstSeg = [int]$matches[1]
+            $burstInt = [double]$matches[2]
+            $script:segHeat[$burstSeg] += $burstInt
+            $script:segRequests[$burstSeg] += [int]($burstInt * 10)
+            if ($script:segHeat[$burstSeg] -gt 100) { $script:segHeat[$burstSeg] = 100 }
+        }
+    }
+
+    # ── Run PINN engine ──
+    Update-PINN -currentHeat $script:segHeat
+
+    # ── Build JSON ──
     $segHeatJson = "[" + (($script:segHeat | ForEach-Object { [Math]::Round($_, 1) }) -join ",") + "]"
     $segReqsJson = "[" + ($script:segRequests -join ",") + "]"
-
     $hitRate = if (($hits + $misses) -gt 0) { [Math]::Round(100.0 * $hits / ($hits + $misses), 2) } else { 0 }
 
+    # PINN fields
+    $pinnUJson      = "[" + (($script:pinnU | ForEach-Object { [Math]::Round($_, 2) }) -join ",") + "]"
+    $pinnDuDtJson   = "[" + (($script:pinnDuDt | ForEach-Object { [Math]::Round($_, 2) }) -join ",") + "]"
+    $pinnDuDxJson   = "[" + (($script:pinnDuDx | ForEach-Object { [Math]::Round($_, 2) }) -join ",") + "]"
+    $pinnD2uDx2Json = "[" + (($script:pinnD2uDx2 | ForEach-Object { [Math]::Round($_, 2) }) -join ",") + "]"
+    $pinnResJson    = "[" + (($script:pinnResidual | ForEach-Object { [Math]::Round($_, 2) }) -join ",") + "]"
+    $pinnPredJson   = "[" + (($script:pinnPredicted | ForEach-Object { [Math]::Round($_, 1) }) -join ",") + "]"
+
+    $strokeSegs = @()
+    for ($i = 0; $i -lt 32; $i++) {
+        if ($script:pinnPredicted[$i] -gt $script:strokeThreshold) { $strokeSegs += $i }
+    }
+    $strokeJson = "[" + ($strokeSegs -join ",") + "]"
+
+    $evtParts = @()
+    foreach ($e in $script:pinnEvents) {
+        $evtParts += '{"time":"' + $e.time + '","segment":' + $e.segment + ',"heat":' + $e.heat + ',"predicted":' + $e.predicted + ',"action":"' + $e.action + '","detail":"' + $e.detail + '"}'
+    }
+    $evtJson = "[" + ($evtParts -join ",") + "]"
+
+    $migParts = @()
+    foreach ($m in $script:mitigations) {
+        $migParts += '{"time":"' + $m.time + '","from":' + $m.from + ',"to":' + $m.to + ',"reason":"' + $m.reason + '"}'
+    }
+    $migJson = "[" + ($migParts -join ",") + "]"
+
     return @"
-{"total_ops":$totalOps,"cache_hits":$hits,"cache_misses":$misses,"hit_rate":$hitRate,"current_keys":$keys,"write_through":$wtOps,"write_back":$wbOps,"segment_heat":$segHeatJson,"segment_requests":$segReqsJson}
+{"total_ops":$totalOps,"cache_hits":$hits,"cache_misses":$misses,"hit_rate":$hitRate,"current_keys":$keys,"write_through":$wtOps,"write_back":$wbOps,"segment_heat":$segHeatJson,"segment_requests":$segReqsJson,"pinn":{"viscosity":$($script:viscosity),"threshold":$($script:strokeThreshold),"u":$pinnUJson,"du_dt":$pinnDuDtJson,"du_dx":$pinnDuDxJson,"d2u_dx2":$pinnD2uDx2Json,"residual":$pinnResJson,"predicted":$pinnPredJson,"stroke_segments":$strokeJson,"events":$evtJson,"migrations":$migJson}}
 "@
 }
 
-# ── Start HTTP listener ──────────────────────────────────────────
+# ══════════════════════════════════════════════════════════════════
+#  HTTP SERVER
+# ══════════════════════════════════════════════════════════════════
 $listener = New-Object System.Net.HttpListener
 $listener.Prefixes.Add("http://127.0.0.1:${HttpPort}/")
 $listener.Start()
 
 Write-Host ""
-Write-Host "  Metrics HTTP server running on http://127.0.0.1:${HttpPort}" -ForegroundColor Cyan
+Write-Host "  PINN Metrics Server on http://127.0.0.1:${HttpPort}" -ForegroundColor Cyan
 Write-Host "  Dashboard:  http://127.0.0.1:${HttpPort}/dashboard.html" -ForegroundColor Green
-Write-Host "  Metrics:    http://127.0.0.1:${HttpPort}/metrics" -ForegroundColor Green
+Write-Host "  Burst API:  http://127.0.0.1:${HttpPort}/burst?seg=14&intensity=30" -ForegroundColor Yellow
+Write-Host "  PDE Model:  du/dt + u*du/dx = nu*d2u/dx2  (Burgers Equation)" -ForegroundColor Magenta
+Write-Host "  Viscosity=$($script:viscosity)  Stroke-Thresh=$($script:strokeThreshold)%" -ForegroundColor Magenta
 Write-Host "  Press Ctrl+C to stop." -ForegroundColor Yellow
 Write-Host ""
 
 $webRoot = Join-Path $PSScriptRoot "..\web"
 
 while ($listener.IsListening) {
-    try {
-        $ctx = $listener.GetContext()
-    } catch {
-        break
-    }
+    try { $ctx = $listener.GetContext() } catch { break }
     $req = $ctx.Request
     $res = $ctx.Response
 
-    # CORS
     $res.Headers.Add("Access-Control-Allow-Origin", "*")
     $res.Headers.Add("Access-Control-Allow-Methods", "GET, OPTIONS")
     if ($req.HttpMethod -eq "OPTIONS") { $res.StatusCode = 204; $res.Close(); continue }
@@ -147,6 +335,28 @@ while ($listener.IsListening) {
             $res.ContentLength64 = $buf.Length
             $res.OutputStream.Write($buf, 0, $buf.Length)
         }
+        "/burst" {
+            $seg = 14; $intensity = 30
+            $qs = $req.Url.Query
+            if ($qs -match "seg=(\d+)") { $seg = [int]$matches[1] }
+            if ($qs -match "intensity=(\d+)") { $intensity = [int]$matches[1] }
+            $burstFile = Join-Path $PSScriptRoot "..\data\burst_signal.txt"
+            "segment:$seg intensity:$intensity" | Set-Content $burstFile
+            $buf = [System.Text.Encoding]::UTF8.GetBytes("{`"status`":`"burst`",`"segment`":$seg,`"intensity`":$intensity}")
+            $res.ContentType = "application/json"
+            $res.ContentLength64 = $buf.Length
+            $res.OutputStream.Write($buf, 0, $buf.Length)
+            Write-Host "  [BURST] S$seg intensity=$intensity" -ForegroundColor Yellow
+        }
+        "/burst/stop" {
+            $burstFile = Join-Path $PSScriptRoot "..\data\burst_signal.txt"
+            if (Test-Path $burstFile) { Remove-Item $burstFile -Force }
+            $buf = [System.Text.Encoding]::UTF8.GetBytes('{"status":"stopped"}')
+            $res.ContentType = "application/json"
+            $res.ContentLength64 = $buf.Length
+            $res.OutputStream.Write($buf, 0, $buf.Length)
+            Write-Host "  [BURST] Stopped" -ForegroundColor Green
+        }
         { $_ -eq "/" -or $_ -eq "/dashboard.html" } {
             $file = Join-Path $webRoot "dashboard.html"
             if (Test-Path $file) {
@@ -156,36 +366,23 @@ while ($listener.IsListening) {
                 $res.OutputStream.Write($html, 0, $html.Length)
             } else {
                 $res.StatusCode = 404
-                $buf = [System.Text.Encoding]::UTF8.GetBytes("dashboard.html not found at $file")
+                $buf = [System.Text.Encoding]::UTF8.GetBytes("Not found: $file")
                 $res.ContentLength64 = $buf.Length
                 $res.OutputStream.Write($buf, 0, $buf.Length)
             }
         }
         default {
-            # try serving static file from web/
             $file = Join-Path $webRoot ($path.TrimStart('/'))
             if (Test-Path $file) {
                 $bytes = [System.IO.File]::ReadAllBytes($file)
                 $ext = [System.IO.Path]::GetExtension($file)
-                $ct = switch ($ext) {
-                    ".html" { "text/html" }
-                    ".css"  { "text/css" }
-                    ".js"   { "application/javascript" }
-                    ".json" { "application/json" }
-                    ".png"  { "image/png" }
-                    ".svg"  { "image/svg+xml" }
-                    default { "application/octet-stream" }
-                }
+                $ct = switch ($ext) { ".html"{"text/html"} ".css"{"text/css"} ".js"{"application/javascript"} ".json"{"application/json"} ".png"{"image/png"} ".svg"{"image/svg+xml"} default{"application/octet-stream"} }
                 $res.ContentType = $ct
                 $res.ContentLength64 = $bytes.Length
                 $res.OutputStream.Write($bytes, 0, $bytes.Length)
-            } else {
-                $res.StatusCode = 404
-            }
+            } else { $res.StatusCode = 404 }
         }
     }
-
     $res.Close()
 }
-
 $listener.Stop()

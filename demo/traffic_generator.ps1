@@ -4,7 +4,7 @@
 # Usage:  powershell -ExecutionPolicy Bypass -File demo\traffic_generator.ps1
 
 param(
-    [int]$Port = 6399,
+    [int]$Port = 6379,
     [int]$RequestsPerSecond = 40,   # roughly: 40 ops/s baseline
     [switch]$HotKeyBurst            # add a hot-key storm in the middle
 )
