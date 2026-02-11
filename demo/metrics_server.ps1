@@ -494,6 +494,45 @@ while ($listener.IsListening) {
             $res.OutputStream.Write($buf, 0, $buf.Length)
             Write-Host "  [BURST] Stopped" -ForegroundColor Green
         }
+        "/reset" {
+            # Stop burst
+            $burstFile = Join-Path $PSScriptRoot "..\data\burst_signal.txt"
+            if (Test-Path $burstFile) { Remove-Item $burstFile -Force }
+            # FLUSHALL on cache server
+            $flushResult = Send-CacheCommand "FLUSHALL"
+            # Reset all internal state
+            $script:segRequests  = [int[]]::new(32)
+            $script:segHeat      = [double[]]::new(32)
+            $script:pinnU        = [double[]]::new(32)
+            $script:pinnDuDt     = [double[]]::new(32)
+            $script:pinnDuDx     = [double[]]::new(32)
+            $script:pinnD2uDx2   = [double[]]::new(32)
+            $script:pinnResidual = [double[]]::new(32)
+            $script:pinnPredicted = [double[]]::new(32)
+            $script:heatHistory   = @()
+            $script:mitigationCooldown = 0
+            $script:pinnEvents    = [System.Collections.ArrayList]::new()
+            $script:mitigations   = [System.Collections.ArrayList]::new()
+            $script:wbQueueDepth   = [double[]]::new(32)
+            $script:wbFlushRate    = [double[]]::new(32)
+            $script:wbDirtyRatio   = [double[]]::new(32)
+            $script:wbTotalFlushed = 0
+            $script:wbFlushEvents  = [System.Collections.ArrayList]::new()
+            $script:lockState      = [int[]]::new(32)
+            $script:lockWaitMs     = [double[]]::new(32)
+            $script:lockAcquires   = [int[]]::new(32)
+            $script:lockContentions = [int[]]::new(32)
+            $script:lockEvents     = [System.Collections.ArrayList]::new()
+            $script:prevHits     = 0
+            $script:prevMisses   = 0
+            $script:prevOps      = 0
+            $script:pollCount    = 0
+            $buf = [System.Text.Encoding]::UTF8.GetBytes('{"status":"reset","flush":"' + $flushResult + '"}')
+            $res.ContentType = "application/json"
+            $res.ContentLength64 = $buf.Length
+            $res.OutputStream.Write($buf, 0, $buf.Length)
+            Write-Host "  [RESET] Database flushed, all state reset" -ForegroundColor Cyan
+        }
         { $_ -eq "/" -or $_ -eq "/dashboard.html" } {
             $file = Join-Path $webRoot "dashboard.html"
             if (Test-Path $file) {

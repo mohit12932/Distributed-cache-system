@@ -18,6 +18,9 @@
         .badge{display:flex;align-items:center;gap:6px;padding:4px 12px;border-radius:16px;font-size:.78em;font-weight:600}
         .badge.on{background:rgba(76,175,80,.15);color:#4caf50;border:1px solid #4caf50}
         .badge.off{background:rgba(244,67,54,.15);color:#f44336;border:1px solid #f44336}
+        .reset-btn{padding:6px 16px;border:none;border-radius:7px;font-weight:700;font-size:.8em;cursor:pointer;background:linear-gradient(135deg,#d32f2f,#c62828);color:#fff;transition:all .2s;display:flex;align-items:center;gap:5px}
+        .reset-btn:hover{filter:brightness(1.2);box-shadow:0 0 14px rgba(211,47,47,.5)}
+        .reset-btn svg{width:14px;height:14px;fill:#fff}
         .dot{width:7px;height:7px;border-radius:50%;background:currentColor;animation:pulse 2s infinite}
         @keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
 
@@ -56,10 +59,7 @@
         .bbtn.fire:hover{filter:brightness(1.2);box-shadow:0 0 14px rgba(244,67,54,.5)}
         .bbtn.stop{background:rgba(76,175,80,.12);color:#4caf50;border:1px solid #4caf50}
         .bbtn.stop:hover{background:rgba(76,175,80,.25)}
-        .burst-presets{display:flex;gap:4px}
-        .bpreset{padding:3px 8px;border:1px solid rgba(187,134,252,.25);border-radius:4px;background:rgba(187,134,252,.06);color:#bb86fc;font-size:.72em;cursor:pointer;transition:all .2s}
-        .bpreset:hover{background:rgba(187,134,252,.18);border-color:#bb86fc}
-        .bpreset.active{background:rgba(187,134,252,.28);border-color:#bb86fc}
+
 
         /* ── Stroke alert ── */
         .stroke-alert{display:none;align-items:center;gap:10px;padding:12px 18px;margin-bottom:14px;background:rgba(244,67,54,.1);border:1px solid #f44336;border-radius:10px;animation:blink 1s infinite}
@@ -122,6 +122,7 @@
         <h1>Distributed <span>Cache</span> System</h1>
         <div class="hdr-right">
             <div class="badge on" id="badge"><div class="dot"></div><span id="badgeTxt">Connected</span></div>
+            <button class="reset-btn" onclick="resetDashboard()" title="Reset database & stop all nodes"><svg viewBox="0 0 24 24"><path d="M17.65 6.35A7.96 7.96 0 0012 4C7.58 4 4.01 7.58 4.01 12S7.58 20 12 20c3.73 0 6.84-2.55 7.73-6h-2.08A5.99 5.99 0 0112 18c-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/></svg>RESET</button>
         </div>
     </header>
 
@@ -153,12 +154,6 @@
         <span style="color:#bb86fc;font-weight:700;font-size:.88em">PINN Burst</span>
         <label>Segments</label>
         <input type="text" id="burstSegs" value="14" placeholder="e.g. 14,15,16">
-        <div class="burst-presets">
-            <button class="bpreset active" onclick="setPreset(this,'14')">S14</button>
-            <button class="bpreset" onclick="setPreset(this,'14,15,16')">S14-16</button>
-            <button class="bpreset" onclick="setPreset(this,'0,8,16,24')">Corners</button>
-            <button class="bpreset" onclick="setPreset(this,'12,13,14,15,16,17,18,19')">Mid-8</button>
-        </div>
         <label>Power</label><input type="number" id="burstPow" value="30" min="1" max="50">
         <button class="bbtn fire" onclick="fireBurst()">FIRE BURST</button>
         <button class="bbtn stop" onclick="stopBurst()">STOP</button>
@@ -170,12 +165,31 @@
         <div><div class="sa-text" id="strokeText">HEAT STROKE DETECTED</div><div class="sa-detail" id="strokeDetail"></div></div>
     </div>
 
-    <!-- ═══ ROW 1: Traffic + Node Topology ═══ -->
+    <!-- ═══ ROW 1: Traffic + Segment Status ═══ -->
     <div class="g2">
         <div class="card">
             <h3>Traffic Over Time</h3>
             <canvas id="trafficChart"></canvas>
         </div>
+        <div class="card">
+            <h3>Segment Status &mdash; Heat &amp; Lock</h3>
+            <div class="sg-grid" id="segGrid"></div>
+            <div class="sg-legend">
+                <span><div class="sw" style="background:#1a3a5c"></div> Cold</span>
+                <span><div class="sw" style="background:#2e4a1e"></div> Warm</span>
+                <span><div class="sw" style="background:#5c3a0a"></div> Hot</span>
+                <span><div class="sw" style="background:#5c1a1a"></div> Stroke</span>
+                <span style="color:#1f3460">|</span>
+                <span><div class="sw" style="border:2px solid transparent;background:#12122a"></div> FREE</span>
+                <span><div class="sw" style="border:2px solid #2196F3;background:#12122a"></div> SHARED</span>
+                <span><div class="sw" style="border:2px solid #ff9800;background:#12122a"></div> EXCL</span>
+                <span><div class="sw" style="border:2px solid #f44336;background:#12122a"></div> CONTEND</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- ═══ ROW 2: Node Topology + PINN ═══ -->
+    <div class="g2">
         <div class="card">
             <h3>Network Node Topology</h3>
             <svg viewBox="0 0 500 250" class="topo-svg" xmlns="http://www.w3.org/2000/svg">
@@ -236,25 +250,6 @@
                 <text x="60" y="122" text-anchor="middle" fill="#64b5f6" font-size="9" font-weight="700">Node D</text>
                 <text x="60" y="136" text-anchor="middle" fill="#546e7a" font-size="7.5" id="topoInfoD">S24-S31 | 0 req</text>
             </svg>
-        </div>
-    </div>
-
-    <!-- ═══ ROW 2: Merged Heatmap+Lock + PINN ═══ -->
-    <div class="g2">
-        <div class="card">
-            <h3>Segment Status &mdash; Heat &amp; Lock</h3>
-            <div class="sg-grid" id="segGrid"></div>
-            <div class="sg-legend">
-                <span><div class="sw" style="background:#1a3a5c"></div> Cold</span>
-                <span><div class="sw" style="background:#2e4a1e"></div> Warm</span>
-                <span><div class="sw" style="background:#5c3a0a"></div> Hot</span>
-                <span><div class="sw" style="background:#5c1a1a"></div> Stroke</span>
-                <span style="color:#1f3460">|</span>
-                <span><div class="sw" style="border:2px solid transparent;background:#12122a"></div> FREE</span>
-                <span><div class="sw" style="border:2px solid #2196F3;background:#12122a"></div> SHARED</span>
-                <span><div class="sw" style="border:2px solid #ff9800;background:#12122a"></div> EXCL</span>
-                <span><div class="sw" style="border:2px solid #f44336;background:#12122a"></div> CONTEND</span>
-            </div>
         </div>
         <div class="card" style="border-color:#4a1a7a">
             <h3 style="color:#bb86fc">PINN &mdash; Actual vs Predicted Heat <span class="pinn-eq-inline">&part;u/&part;t + u&middot;&part;u/&part;x = &nu;&middot;&part;&sup2;u/&part;x&sup2;</span></h3>
@@ -390,11 +385,44 @@ function updateNodeTopo(segReq, segHeat, opsPerSec){
 /* ════════════════════════════════════════════════════════════════
    BURST CONTROLS (MULTI-SEGMENT)
    ════════════════════════════════════════════════════════════════ */
-function setPreset(btn, segs){
-    document.getElementById('burstSegs').value = segs;
-    var all = document.querySelectorAll('.bpreset');
-    for(var i=0;i<all.length;i++) all[i].classList.remove('active');
-    btn.classList.add('active');
+async function resetDashboard(){
+    try{
+        await fetch(API+'/burst/stop');
+        await fetch(API+'/reset');
+        // Reset client-side state
+        prevOps=0; prevHits=0; prevMisses=0;
+        trafficHistory = [];
+        trafficChart.data.labels = [];
+        trafficChart.data.datasets[0].data = [];
+        trafficChart.data.datasets[1].data = [];
+        trafficChart.data.datasets[2].data = [];
+        trafficChart.update('none');
+        pinnChart.data.datasets[0].data = new Array(32).fill(0);
+        pinnChart.data.datasets[1].data = new Array(32).fill(0);
+        pinnChart.update('none');
+        unifiedEvents.length = 0;
+        renderEvents();
+        document.getElementById('reqLog').innerHTML = '';
+        document.getElementById('burstStatus').textContent = 'Ready';
+        document.getElementById('burstStatus').style.color = '#546e7a';
+        document.getElementById('strokeAlert').className = 'stroke-alert';
+        prevPinnEvents=0; prevWbEvents=0; prevLockEvents=0;
+        // Reset segment grid visuals
+        for(var i=0;i<32;i++){
+            var el=document.getElementById('sg-'+i);
+            el.className='sg sg-cold sg-lk-free';
+            el.querySelector('.sg-heat').textContent='0%';
+            el.querySelector('.sg-lock').textContent='FREE';
+        }
+        // Reset node topology
+        var ids=['A','B','C','D'];
+        for(var n=0;n<ids.length;n++){
+            document.getElementById('topoRect'+ids[n]).setAttribute('stroke','#1f3460');
+            document.getElementById('topoInfo'+ids[n]).textContent='S'+(n*8)+'-S'+(n*8+7)+' | 0 req';
+            document.getElementById('flowLabel'+ids[n]).textContent='0 req/s';
+        }
+        document.getElementById('topoLB').textContent='0 ops/s';
+    }catch(e){}
 }
 
 async function fireBurst(){
