@@ -320,6 +320,130 @@
         .pe-seg { color: #f44336; font-weight: 700; min-width: 35px; }
         .pe-action { color: #bb86fc; font-weight: 600; min-width: 60px; }
         .pe-detail { color: #8892b0; }
+
+        /* ── Write-Back Pipeline Panel ── */
+        .wb-section-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 14px 24px;
+            background: linear-gradient(135deg, #0a1e2e 0%, #0e2a1a 100%);
+            border-radius: 12px;
+            margin: 28px 0 18px;
+            border: 1px solid #1a5a3a;
+        }
+        .wb-section-header h2 { color: #4caf50; font-size: 1.25em; margin: 0; }
+        .wb-desc {
+            font-size: 0.82em; color: #81c784;
+            background: rgba(76,175,80,0.08);
+            padding: 4px 14px; border-radius: 6px;
+            border: 1px solid rgba(76,175,80,0.2);
+        }
+        .wb-kpi-row {
+            display: grid; grid-template-columns: repeat(4, 1fr);
+            gap: 12px; margin-bottom: 18px;
+        }
+        .wb-kpi {
+            background: #1a1a2e; border-radius: 10px; padding: 14px;
+            border: 1px solid #1a5a3a; text-align: center;
+        }
+        .wb-kpi .wk-val { font-size: 1.5em; font-weight: 700; }
+        .wb-kpi .wk-label { font-size: 0.73em; color: #8892b0; margin-top: 4px; }
+
+        .wb-pipeline-vis {
+            display: flex; align-items: center; gap: 0;
+            padding: 18px 12px; overflow-x: auto;
+        }
+        .wb-stage {
+            flex: 0 0 auto; text-align: center; position: relative;
+        }
+        .wb-stage-box {
+            width: 110px; padding: 10px 8px; border-radius: 8px;
+            border: 2px solid #1f3460; background: #16213e;
+            font-size: 0.78em; font-weight: 600;
+            transition: all .3s;
+        }
+        .wb-stage-box.active { border-color: #4caf50; box-shadow: 0 0 12px rgba(76,175,80,0.3); }
+        .wb-stage-box.hot { border-color: #ff9800; box-shadow: 0 0 12px rgba(255,152,0,0.3); }
+        .wb-stage-box.stroke { border-color: #f44336; box-shadow: 0 0 12px rgba(244,67,54,0.4); animation: blink .7s infinite; }
+        .wb-stage-val { font-size: 1.3em; font-weight: 700; margin: 4px 0; }
+        .wb-stage-label { font-size: 0.7em; color: #8892b0; }
+        .wb-arrow {
+            flex: 0 0 40px; text-align: center;
+            font-size: 1.2em; color: #1f3460;
+        }
+        .wb-arrow.flowing { color: #4caf50; animation: arrowPulse 1s infinite; }
+        @keyframes arrowPulse { 0%,100%{opacity:.4} 50%{opacity:1} }
+
+        .wb-events-log {
+            max-height: 180px; overflow-y: auto;
+            font-family: 'Consolas', monospace; font-size: 0.78em;
+        }
+        .wb-events-log::-webkit-scrollbar { width: 6px; }
+        .wb-events-log::-webkit-scrollbar-thumb { background: #1a5a3a; border-radius: 3px; }
+        .wbe-entry {
+            padding: 3px 6px; display: flex; gap: 8px;
+            border-bottom: 1px solid rgba(26,90,58,0.3);
+        }
+        .wbe-time { color: #546e7a; min-width: 60px; }
+        .wbe-seg { color: #ff9800; font-weight: 700; min-width: 30px; }
+        .wbe-type { color: #f44336; font-weight: 600; min-width: 70px; }
+        .wbe-detail { color: #8892b0; }
+
+        /* ── Lock Contention Panel ── */
+        .lock-section-header {
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 14px 24px;
+            background: linear-gradient(135deg, #2e1a0a 0%, #1a0a2e 100%);
+            border-radius: 12px; margin: 28px 0 18px;
+            border: 1px solid #5a3a1a;
+        }
+        .lock-section-header h2 { color: #ff9800; font-size: 1.25em; margin: 0; }
+        .lock-desc {
+            font-size: 0.82em; color: #ffb74d;
+            background: rgba(255,152,0,0.08);
+            padding: 4px 14px; border-radius: 6px;
+            border: 1px solid rgba(255,152,0,0.2);
+        }
+
+        .lock-grid {
+            display: grid; grid-template-columns: repeat(8, 1fr);
+            gap: 5px;
+        }
+        .lock-cell {
+            aspect-ratio: 1.4; border-radius: 6px;
+            display: flex; flex-direction: column;
+            align-items: center; justify-content: center;
+            font-size: 0.68em; font-weight: 700;
+            transition: all .3s;
+        }
+        .lock-cell .lock-label { font-size: 0.75em; opacity: 0.7; margin-top: 1px; }
+        .lock-free       { background: #1a2a1a; color: #4caf50; }
+        .lock-shared     { background: #1a2a3a; color: #64b5f6; }
+        .lock-exclusive  { background: #3a2a0a; color: #ffb74d; }
+        .lock-contended  { background: #3a0a0a; color: #ef5350; animation: blink .5s infinite; }
+
+        .lock-legend {
+            display: flex; gap: 16px; justify-content: center;
+            margin-top: 10px; font-size: 0.75em; color: #8892b0;
+        }
+        .lock-legend-item { display: flex; align-items: center; gap: 5px; }
+        .lock-legend-sw { width: 12px; height: 12px; border-radius: 3px; }
+
+        .lock-events-log {
+            max-height: 180px; overflow-y: auto;
+            font-family: 'Consolas', monospace; font-size: 0.78em;
+        }
+        .lock-events-log::-webkit-scrollbar { width: 6px; }
+        .lock-events-log::-webkit-scrollbar-thumb { background: #5a3a1a; border-radius: 3px; }
+        .le-entry {
+            padding: 3px 6px; display: flex; gap: 8px;
+            border-bottom: 1px solid rgba(90,58,26,0.3);
+        }
+        .le-time { color: #546e7a; min-width: 60px; }
+        .le-seg { color: #f44336; font-weight: 700; min-width: 30px; }
+        .le-state { color: #ff9800; font-weight: 600; min-width: 75px; }
+        .le-detail { color: #8892b0; }
     </style>
 </head>
 <body>
@@ -446,6 +570,131 @@
         <div class="card" style="border-color:#4a1a7a">
             <h2 style="color:#bb86fc">PDE Derivative Terms (du/dt, du/dx)</h2>
             <canvas id="pinnDerivChart"></canvas>
+        </div>
+    </div>
+
+    <!-- ═══════ WRITE-BACK PIPELINE SECTION ═══════ -->
+    <div class="wb-section-header">
+        <h2>Write-Back Pipeline &amp; Dirty Flush</h2>
+        <div class="wb-desc">
+            PUT &rarr; Cache (dirty) &rarr; Queue &rarr; Background Flush &rarr; Disk
+        </div>
+    </div>
+
+    <div class="wb-kpi-row">
+        <div class="wb-kpi">
+            <div class="wk-val color-green" id="wbTotalFlushed">0</div>
+            <div class="wk-label">Total Flushed to Disk</div>
+        </div>
+        <div class="wb-kpi">
+            <div class="wk-val color-orange" id="wbMaxQueue">0</div>
+            <div class="wk-label">Max Queue Depth</div>
+        </div>
+        <div class="wb-kpi">
+            <div class="wk-val color-blue" id="wbAvgDirty">0%</div>
+            <div class="wk-label">Avg Dirty Ratio</div>
+        </div>
+        <div class="wb-kpi">
+            <div class="wk-val color-red" id="wbEmergencyFlushes">0</div>
+            <div class="wk-label">Emergency Flushes</div>
+        </div>
+    </div>
+
+    <div class="grid grid-2">
+        <div class="card" style="border-color:#1a5a3a">
+            <h2 style="color:#4caf50">Write-Back Pipeline (Target Segment)</h2>
+            <div class="wb-pipeline-vis" id="wbPipeline">
+                <div class="wb-stage">
+                    <div class="wb-stage-box active" id="wbStgSet">
+                        <div style="color:#81c784">SET ops</div>
+                        <div class="wb-stage-val" id="wbSetRate">0</div>
+                        <div class="wb-stage-label">incoming/s</div>
+                    </div>
+                </div>
+                <div class="wb-arrow flowing" id="wbArrow1">&#9654;</div>
+                <div class="wb-stage">
+                    <div class="wb-stage-box" id="wbStgCache">
+                        <div style="color:#64b5f6">Cache</div>
+                        <div class="wb-stage-val" id="wbDirtyPct">0%</div>
+                        <div class="wb-stage-label">dirty entries</div>
+                    </div>
+                </div>
+                <div class="wb-arrow" id="wbArrow2">&#9654;</div>
+                <div class="wb-stage">
+                    <div class="wb-stage-box" id="wbStgQueue">
+                        <div style="color:#ffb74d">Queue</div>
+                        <div class="wb-stage-val" id="wbQueueVal">0</div>
+                        <div class="wb-stage-label">pending</div>
+                    </div>
+                </div>
+                <div class="wb-arrow" id="wbArrow3">&#9654;</div>
+                <div class="wb-stage">
+                    <div class="wb-stage-box" id="wbStgFlush">
+                        <div style="color:#ce93d8">Flush</div>
+                        <div class="wb-stage-val" id="wbFlushVal">0</div>
+                        <div class="wb-stage-label">entries/poll</div>
+                    </div>
+                </div>
+                <div class="wb-arrow" id="wbArrow4">&#9654;</div>
+                <div class="wb-stage">
+                    <div class="wb-stage-box" id="wbStgDisk">
+                        <div style="color:#4caf50">Disk</div>
+                        <div class="wb-stage-val" id="wbDiskVal">OK</div>
+                        <div class="wb-stage-label">persisted</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="card" style="border-color:#1a5a3a">
+            <h2 style="color:#4caf50">Queue Depth &amp; Flush Rate (all segments)</h2>
+            <canvas id="wbChart"></canvas>
+        </div>
+    </div>
+
+    <div class="grid grid-2" style="margin-top:18px">
+        <div class="card" style="border-color:#1a5a3a">
+            <h2 style="color:#4caf50">Dirty Ratio per Segment</h2>
+            <canvas id="wbDirtyChart"></canvas>
+        </div>
+        <div class="card" style="border-color:#1a5a3a">
+            <h2 style="color:#4caf50">Write-Back Flush Events</h2>
+            <div class="wb-events-log" id="wbEventsLog"></div>
+        </div>
+    </div>
+
+    <!-- ═══════ LOCK CONTENTION SECTION ═══════ -->
+    <div class="lock-section-header">
+        <h2>Segment Lock Contention (32 Mutexes)</h2>
+        <div class="lock-desc">
+            shared_mutex per segment &mdash; GET=shared, PUT/DEL=exclusive
+        </div>
+    </div>
+
+    <div class="grid grid-2">
+        <div class="card" style="border-color:#5a3a1a">
+            <h2 style="color:#ff9800">Lock State Matrix (live)</h2>
+            <div class="lock-grid" id="lockGrid"></div>
+            <div class="lock-legend">
+                <div class="lock-legend-item"><div class="lock-legend-sw lock-free"></div> FREE</div>
+                <div class="lock-legend-item"><div class="lock-legend-sw lock-shared"></div> SHARED (read)</div>
+                <div class="lock-legend-item"><div class="lock-legend-sw lock-exclusive"></div> EXCLUSIVE (write)</div>
+                <div class="lock-legend-item"><div class="lock-legend-sw lock-contended"></div> CONTENDED</div>
+            </div>
+        </div>
+        <div class="card" style="border-color:#5a3a1a">
+            <h2 style="color:#ff9800">Lock Wait Time per Segment (ms)</h2>
+            <canvas id="lockWaitChart"></canvas>
+        </div>
+    </div>
+
+    <div class="grid grid-2" style="margin-top:18px">
+        <div class="card" style="border-color:#5a3a1a">
+            <h2 style="color:#ff9800">Cumulative Contentions</h2>
+            <canvas id="lockContentionChart"></canvas>
+        </div>
+        <div class="card" style="border-color:#5a3a1a">
+            <h2 style="color:#ff9800">Lock Contention Events</h2>
+            <div class="lock-events-log" id="lockEventsLog"></div>
         </div>
     </div>
 
@@ -658,6 +907,104 @@ async function stopBurst() {
     } catch(e) { console.warn('Stop failed', e); }
 }
 
+// ===== WRITE-BACK CHARTS =====
+const wbChart = new Chart(document.getElementById('wbChart'), {
+    type: 'bar',
+    data: {
+        labels: segLabels,
+        datasets: [
+            { label: 'Queue Depth', data: new Array(32).fill(0), backgroundColor: 'rgba(255,152,0,0.5)', borderColor: '#ff9800', borderWidth: 1, borderRadius: 2 },
+            { label: 'Flush Rate',  data: new Array(32).fill(0), backgroundColor: 'rgba(76,175,80,0.5)',  borderColor: '#4caf50', borderWidth: 1, borderRadius: 2 }
+        ]
+    },
+    options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { labels: { boxWidth: 12 } } },
+        scales: {
+            y: { beginAtZero: true, grid: { color: 'rgba(31,52,96,0.4)' } },
+            x: { ticks: { font: { size: 8 } } }
+        }
+    }
+});
+
+const wbDirtyChart = new Chart(document.getElementById('wbDirtyChart'), {
+    type: 'bar',
+    data: {
+        labels: segLabels,
+        datasets: [{
+            label: 'Dirty %',
+            data: new Array(32).fill(0),
+            backgroundColor: new Array(32).fill('rgba(0,212,255,0.4)'),
+            borderColor: '#00d4ff', borderWidth: 1, borderRadius: 2
+        }]
+    },
+    options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { labels: { boxWidth: 12 } } },
+        scales: {
+            y: { beginAtZero: true, max: 100, grid: { color: 'rgba(31,52,96,0.4)' },
+                title: { display: true, text: '%', color: '#8892b0' } },
+            x: { ticks: { font: { size: 8 } } }
+        }
+    }
+});
+
+// ===== LOCK CONTENTION CHARTS =====
+const lockWaitChart = new Chart(document.getElementById('lockWaitChart'), {
+    type: 'bar',
+    data: {
+        labels: segLabels,
+        datasets: [{
+            label: 'Wait (ms)',
+            data: new Array(32).fill(0),
+            backgroundColor: new Array(32).fill('rgba(255,152,0,0.4)'),
+            borderColor: '#ff9800', borderWidth: 1, borderRadius: 2
+        }]
+    },
+    options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { labels: { boxWidth: 12 } } },
+        scales: {
+            y: { beginAtZero: true, grid: { color: 'rgba(31,52,96,0.4)' },
+                title: { display: true, text: 'ms', color: '#8892b0' } },
+            x: { ticks: { font: { size: 8 } } }
+        }
+    }
+});
+
+const lockContentionChart = new Chart(document.getElementById('lockContentionChart'), {
+    type: 'bar',
+    data: {
+        labels: segLabels,
+        datasets: [{
+            label: 'Contentions',
+            data: new Array(32).fill(0),
+            backgroundColor: new Array(32).fill('rgba(244,67,54,0.4)'),
+            borderColor: '#f44336', borderWidth: 1, borderRadius: 2
+        }]
+    },
+    options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { labels: { boxWidth: 12 } } },
+        scales: {
+            y: { beginAtZero: true, grid: { color: 'rgba(31,52,96,0.4)' } },
+            x: { ticks: { font: { size: 8 } } }
+        }
+    }
+});
+
+// ===== INIT LOCK GRID =====
+const lockGridEl = document.getElementById('lockGrid');
+const lockStateNames = ['FREE', 'SHARED', 'EXCL', 'CONTEND'];
+const lockStateClasses = ['lock-free', 'lock-shared', 'lock-exclusive', 'lock-contended'];
+for (let i = 0; i < 32; i++) {
+    const d = document.createElement('div');
+    d.className = 'lock-cell lock-free';
+    d.id = 'lock-' + i;
+    d.innerHTML = 'S' + i + '<div class="lock-label">FREE</div>';
+    lockGridEl.appendChild(d);
+}
+
 // ===== NODE ANIMATION HELPERS =====
 const nodeCenters = [
     { x: 130, y: 170 },
@@ -862,6 +1209,127 @@ async function poll() {
                 if (strokeSegs.includes(i)) {
                     el.className = 'seg seg-stroke';
                 }
+            }
+        }
+
+        // ===== WRITE-BACK UPDATE =====
+        const wb = d.writeback;
+        if (wb) {
+            const queueDepth = wb.queue_depth || new Array(32).fill(0);
+            const flushRate = wb.flush_rate || new Array(32).fill(0);
+            const dirtyRatio = wb.dirty_ratio || new Array(32).fill(0);
+
+            // KPIs
+            document.getElementById('wbTotalFlushed').textContent = (wb.total_flushed || 0).toLocaleString();
+            const maxQ = Math.max(...queueDepth);
+            document.getElementById('wbMaxQueue').textContent = Math.round(maxQ);
+            document.getElementById('wbMaxQueue').style.color = maxQ > 100 ? '#f44336' : maxQ > 30 ? '#ff9800' : '#4caf50';
+            const avgDirty = dirtyRatio.reduce(function(a,b){return a+b}, 0) / 32;
+            document.getElementById('wbAvgDirty').textContent = avgDirty.toFixed(1) + '%';
+            const emergCount = (wb.events || []).filter(function(e){ return e.type === 'EMERGENCY'; }).length;
+            document.getElementById('wbEmergencyFlushes').textContent = emergCount;
+
+            // Pipeline visualization - show burst segment or hottest
+            const burstSeg = parseInt(document.getElementById('burstSeg').value) || 14;
+            const targetSeg = strokeSegs.length > 0 ? strokeSegs[0] : burstSeg;
+            const tQ = queueDepth[targetSeg] || 0;
+            const tF = flushRate[targetSeg] || 0;
+            const tD = dirtyRatio[targetSeg] || 0;
+            const tH = segHeat[targetSeg] || 0;
+
+            document.getElementById('wbSetRate').textContent = Math.round(tH * 0.15);
+            document.getElementById('wbDirtyPct').textContent = Math.round(tD) + '%';
+            document.getElementById('wbQueueVal').textContent = Math.round(tQ);
+            document.getElementById('wbFlushVal').textContent = tF.toFixed(1);
+            document.getElementById('wbDiskVal').textContent = tF > 10 ? 'BUSY' : 'OK';
+
+            // Pipeline box states
+            var stgQueue = document.getElementById('wbStgQueue');
+            stgQueue.className = 'wb-stage-box' + (tQ > 100 ? ' stroke' : tQ > 30 ? ' hot' : tQ > 5 ? ' active' : '');
+            var stgFlush = document.getElementById('wbStgFlush');
+            stgFlush.className = 'wb-stage-box' + (tF > 10 ? ' stroke' : tF > 5 ? ' hot' : ' active');
+            var stgDisk = document.getElementById('wbStgDisk');
+            stgDisk.className = 'wb-stage-box' + (tF > 10 ? ' hot' : ' active');
+            document.getElementById('wbStgDisk').querySelector('.wb-stage-val').style.color = tF > 10 ? '#ff9800' : '#4caf50';
+
+            // Arrows flow when active
+            document.getElementById('wbArrow1').className = 'wb-arrow' + (tH > 5 ? ' flowing' : '');
+            document.getElementById('wbArrow2').className = 'wb-arrow' + (tD > 5 ? ' flowing' : '');
+            document.getElementById('wbArrow3').className = 'wb-arrow' + (tQ > 3 ? ' flowing' : '');
+            document.getElementById('wbArrow4').className = 'wb-arrow' + (tF > 0.5 ? ' flowing' : '');
+
+            // Queue depth + flush rate chart
+            wbChart.data.datasets[0].data = queueDepth;
+            wbChart.data.datasets[1].data = flushRate;
+            var qColors = queueDepth.map(function(q){ return q > 100 ? 'rgba(244,67,54,0.6)' : q > 30 ? 'rgba(255,152,0,0.5)' : 'rgba(255,152,0,0.3)'; });
+            wbChart.data.datasets[0].backgroundColor = qColors;
+            wbChart.update('none');
+
+            // Dirty ratio chart
+            var dColors = dirtyRatio.map(function(d){ return d > 50 ? 'rgba(244,67,54,0.5)' : d > 20 ? 'rgba(255,152,0,0.4)' : 'rgba(0,212,255,0.4)'; });
+            wbDirtyChart.data.datasets[0].data = dirtyRatio;
+            wbDirtyChart.data.datasets[0].backgroundColor = dColors;
+            wbDirtyChart.update('none');
+
+            // WB events log
+            var wbEvLog = document.getElementById('wbEventsLog');
+            var wbEvents = wb.events || [];
+            if (wbEvents.length > 0) {
+                wbEvLog.innerHTML = '';
+                wbEvents.slice().reverse().forEach(function(e) {
+                    var div = document.createElement('div');
+                    div.className = 'wbe-entry';
+                    div.innerHTML = '<span class="wbe-time">' + e.time + '</span>' +
+                        '<span class="wbe-seg">S' + e.seg + '</span>' +
+                        '<span class="wbe-type">' + e.type + '</span>' +
+                        '<span class="wbe-detail">queue=' + e.queue + ' flush=' + e.rate + '/s</span>';
+                    wbEvLog.appendChild(div);
+                });
+            }
+        }
+
+        // ===== LOCK CONTENTION UPDATE =====
+        const locks = d.locks;
+        if (locks) {
+            const lockStates = locks.state || new Array(32).fill(0);
+            const lockWaits = locks.wait_ms || new Array(32).fill(0);
+            const lockConts = locks.contentions || new Array(32).fill(0);
+
+            // Lock state matrix
+            for (let i = 0; i < 32; i++) {
+                const el = document.getElementById('lock-' + i);
+                const st = lockStates[i];
+                el.className = 'lock-cell ' + lockStateClasses[st];
+                var waitStr = lockWaits[i] > 0 ? lockWaits[i].toFixed(1) + 'ms' : lockStateNames[st];
+                el.innerHTML = 'S' + i + '<div class="lock-label">' + waitStr + '</div>';
+            }
+
+            // Lock wait chart
+            var waitColors = lockWaits.map(function(w){ return w > 3 ? 'rgba(244,67,54,0.6)' : w > 1 ? 'rgba(255,152,0,0.5)' : 'rgba(255,152,0,0.3)'; });
+            lockWaitChart.data.datasets[0].data = lockWaits;
+            lockWaitChart.data.datasets[0].backgroundColor = waitColors;
+            lockWaitChart.update('none');
+
+            // Contention chart
+            var contColors = lockConts.map(function(c){ return c > 50 ? 'rgba(244,67,54,0.6)' : c > 10 ? 'rgba(255,152,0,0.5)' : 'rgba(244,67,54,0.3)'; });
+            lockContentionChart.data.datasets[0].data = lockConts;
+            lockContentionChart.data.datasets[0].backgroundColor = contColors;
+            lockContentionChart.update('none');
+
+            // Lock events log
+            var lockEvLog = document.getElementById('lockEventsLog');
+            var lockEvents = locks.events || [];
+            if (lockEvents.length > 0) {
+                lockEvLog.innerHTML = '';
+                lockEvents.slice().reverse().forEach(function(e) {
+                    var div = document.createElement('div');
+                    div.className = 'le-entry';
+                    div.innerHTML = '<span class="le-time">' + e.time + '</span>' +
+                        '<span class="le-seg">S' + e.seg + '</span>' +
+                        '<span class="le-state">' + e.state + '</span>' +
+                        '<span class="le-detail">' + e.detail + '</span>';
+                    lockEvLog.appendChild(div);
+                });
             }
         }
         

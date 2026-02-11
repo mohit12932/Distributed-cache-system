@@ -43,6 +43,20 @@ $script:maxHistory    = 10
 $script:pinnEvents    = [System.Collections.ArrayList]::new()
 $script:mitigations   = [System.Collections.ArrayList]::new()
 
+# ── Write-Back pipeline per segment ──
+$script:wbQueueDepth   = [double[]]::new(32)   # pending dirty entries awaiting flush
+$script:wbFlushRate    = [double[]]::new(32)   # entries flushed-to-disk per poll
+$script:wbDirtyRatio   = [double[]]::new(32)   # % of segment entries that are dirty
+$script:wbTotalFlushed = 0                      # cumulative flushed entries
+$script:wbFlushEvents  = [System.Collections.ArrayList]::new()  # flush event log
+
+# ── Segment lock contention model ──
+$script:lockState      = [int[]]::new(32)       # 0=FREE 1=SHARED(read) 2=EXCLUSIVE(write) 3=CONTENDED
+$script:lockWaitMs     = [double[]]::new(32)    # estimated wait time ms
+$script:lockAcquires   = [int[]]::new(32)       # cumulative lock acquisitions
+$script:lockContentions = [int[]]::new(32)      # cumulative contentions
+$script:lockEvents     = [System.Collections.ArrayList]::new()
+
 # ══════════════════════════════════════════════════════════════════
 #  CACHE COMMUNICATION
 # ══════════════════════════════════════════════════════════════════
@@ -209,6 +223,99 @@ function Update-PINN {
     }
 
     if ($script:mitigationCooldown -gt 0) { $script:mitigationCooldown-- }
+
+    # ══════════════════════════════════════════════════════════════
+    #  WRITE-BACK MODEL (driven by PINN heat)
+    #
+    #  When heat rises, more SET ops arrive -> dirty entries pile up
+    #  in the write-back queue. The background flush thread drains
+    #  them every interval. During stroke, queue overflows and the
+    #  flush rate spikes (emergency flush triggered by mitigation).
+    # ══════════════════════════════════════════════════════════════
+    for ($i = 0; $i -lt 32; $i++) {
+        $h = $currentHeat[$i]
+        # Incoming dirty rate proportional to heat (SET ops)
+        $incomingDirty = $h * 0.15
+        $script:wbQueueDepth[$i] += $incomingDirty
+
+        # Background flush drains ~5 entries/poll normally
+        $flushDrain = 5.0
+        # During stroke: emergency flush doubles drain rate
+        if ($h -gt $script:strokeThreshold) {
+            $flushDrain = 15.0
+        }
+        # Actual flushed = min(queue, drain capacity)
+        $flushed = [Math]::Min($script:wbQueueDepth[$i], $flushDrain)
+        $script:wbQueueDepth[$i] = [Math]::Max(0, $script:wbQueueDepth[$i] - $flushed)
+        $script:wbFlushRate[$i] = $flushed
+        $script:wbTotalFlushed += $flushed
+
+        # Dirty ratio: queue depth as fraction of segment capacity (2048 per seg)
+        $script:wbDirtyRatio[$i] = [Math]::Min(100, ($script:wbQueueDepth[$i] / 20.48))
+
+        # Cap queue at segment capacity
+        if ($script:wbQueueDepth[$i] -gt 2048) { $script:wbQueueDepth[$i] = 2048 }
+    }
+
+    # Log emergency flush events for stroke segments
+    foreach ($seg in $strokeSegments) {
+        if ($script:wbQueueDepth[$seg] -gt 10) {
+            $fe = @{
+                time  = (Get-Date).ToString("HH:mm:ss")
+                seg   = $seg
+                queue = [Math]::Round($script:wbQueueDepth[$seg], 0)
+                rate  = [Math]::Round($script:wbFlushRate[$seg], 1)
+                type  = "EMERGENCY"
+            }
+            [void]$script:wbFlushEvents.Add($fe)
+            while ($script:wbFlushEvents.Count -gt 30) { $script:wbFlushEvents.RemoveAt(0) }
+        }
+    }
+
+    # ══════════════════════════════════════════════════════════════
+    #  LOCK CONTENTION MODEL (driven by PINN heat + PDE residual)
+    #
+    #  Each segment has a mutex (shared_mutex in real code).
+    #    - Low heat (<25%):  mostly reads -> SHARED lock, no wait
+    #    - Medium (25-60%):  mixed R/W -> brief EXCLUSIVE locks
+    #    - High (60-80%):    write-heavy -> EXCLUSIVE with waits
+    #    - Stroke (>80%):    CONTENDED — threads stalling, retries
+    #  PDE residual spike = sudden traffic change = lock thrashing
+    # ══════════════════════════════════════════════════════════════
+    for ($i = 0; $i -lt 32; $i++) {
+        $h = $currentHeat[$i]
+        $absRes = [Math]::Abs($script:pinnResidual[$i])
+        $script:lockAcquires[$i] += [int]([Math]::Max(1, $h * 0.5))
+
+        if ($h -gt 80) {
+            $script:lockState[$i] = 3   # CONTENDED
+            $script:lockWaitMs[$i] = 2.5 + $absRes * 0.3 + (Get-Random -Minimum 0 -Maximum 30) * 0.1
+            $script:lockContentions[$i] += [int](1 + $absRes * 0.2)
+        } elseif ($h -gt 60) {
+            $script:lockState[$i] = 2   # EXCLUSIVE
+            $script:lockWaitMs[$i] = 0.8 + $absRes * 0.1 + (Get-Random -Minimum 0 -Maximum 15) * 0.1
+            $script:lockContentions[$i] += [int]($absRes * 0.1)
+        } elseif ($h -gt 25) {
+            $script:lockState[$i] = 1   # SHARED
+            $script:lockWaitMs[$i] = 0.1 + (Get-Random -Minimum 0 -Maximum 5) * 0.1
+        } else {
+            $script:lockState[$i] = 0   # FREE
+            $script:lockWaitMs[$i] = 0.0
+        }
+    }
+
+    # Log lock contention events for stroke segments
+    foreach ($seg in $strokeSegments) {
+        $le = @{
+            time  = (Get-Date).ToString("HH:mm:ss")
+            seg   = $seg
+            state = "CONTENDED"
+            waitMs = [Math]::Round($script:lockWaitMs[$seg], 1)
+            detail = "Mutex stall: $([Math]::Round($script:lockWaitMs[$seg],1))ms. PDE residual=$([Math]::Round([Math]::Abs($script:pinnResidual[$seg]),2))"
+        }
+        [void]$script:lockEvents.Add($le)
+        while ($script:lockEvents.Count -gt 30) { $script:lockEvents.RemoveAt(0) }
+    }
 }
 
 # ══════════════════════════════════════════════════════════════════
@@ -287,8 +394,32 @@ function Build-MetricsJson {
     }
     $migJson = "[" + ($migParts -join ",") + "]"
 
+    # Write-back fields
+    $wbQueueJson  = "[" + (($script:wbQueueDepth | ForEach-Object { [Math]::Round($_, 1) }) -join ",") + "]"
+    $wbFlushJson  = "[" + (($script:wbFlushRate | ForEach-Object { [Math]::Round($_, 1) }) -join ",") + "]"
+    $wbDirtyJson  = "[" + (($script:wbDirtyRatio | ForEach-Object { [Math]::Round($_, 1) }) -join ",") + "]"
+    $wbTotFlush   = [Math]::Round($script:wbTotalFlushed, 0)
+
+    $wbEvParts = @()
+    foreach ($fe in $script:wbFlushEvents) {
+        $wbEvParts += '{"time":"' + $fe.time + '","seg":' + $fe.seg + ',"queue":' + $fe.queue + ',"rate":' + $fe.rate + ',"type":"' + $fe.type + '"}'
+    }
+    $wbEvJson = "[" + ($wbEvParts -join ",") + "]"
+
+    # Lock contention fields
+    $lockStateJson   = "[" + ($script:lockState -join ",") + "]"
+    $lockWaitJson    = "[" + (($script:lockWaitMs | ForEach-Object { [Math]::Round($_, 1) }) -join ",") + "]"
+    $lockAcqJson     = "[" + ($script:lockAcquires -join ",") + "]"
+    $lockContJson    = "[" + ($script:lockContentions -join ",") + "]"
+
+    $lockEvParts = @()
+    foreach ($le in $script:lockEvents) {
+        $lockEvParts += '{"time":"' + $le.time + '","seg":' + $le.seg + ',"state":"' + $le.state + '","waitMs":' + $le.waitMs + ',"detail":"' + $le.detail + '"}'
+    }
+    $lockEvJson = "[" + ($lockEvParts -join ",") + "]"
+
     return @"
-{"total_ops":$totalOps,"cache_hits":$hits,"cache_misses":$misses,"hit_rate":$hitRate,"current_keys":$keys,"write_through":$wtOps,"write_back":$wbOps,"segment_heat":$segHeatJson,"segment_requests":$segReqsJson,"pinn":{"viscosity":$($script:viscosity),"threshold":$($script:strokeThreshold),"u":$pinnUJson,"du_dt":$pinnDuDtJson,"du_dx":$pinnDuDxJson,"d2u_dx2":$pinnD2uDx2Json,"residual":$pinnResJson,"predicted":$pinnPredJson,"stroke_segments":$strokeJson,"events":$evtJson,"migrations":$migJson}}
+{"total_ops":$totalOps,"cache_hits":$hits,"cache_misses":$misses,"hit_rate":$hitRate,"current_keys":$keys,"write_through":$wtOps,"write_back":$wbOps,"segment_heat":$segHeatJson,"segment_requests":$segReqsJson,"pinn":{"viscosity":$($script:viscosity),"threshold":$($script:strokeThreshold),"u":$pinnUJson,"du_dt":$pinnDuDtJson,"du_dx":$pinnDuDxJson,"d2u_dx2":$pinnD2uDx2Json,"residual":$pinnResJson,"predicted":$pinnPredJson,"stroke_segments":$strokeJson,"events":$evtJson,"migrations":$migJson},"writeback":{"queue_depth":$wbQueueJson,"flush_rate":$wbFlushJson,"dirty_ratio":$wbDirtyJson,"total_flushed":$wbTotFlush,"events":$wbEvJson},"locks":{"state":$lockStateJson,"wait_ms":$lockWaitJson,"acquires":$lockAcqJson,"contentions":$lockContJson,"events":$lockEvJson}}
 "@
 }
 
