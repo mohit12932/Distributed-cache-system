@@ -18,9 +18,16 @@
         .badge{display:flex;align-items:center;gap:6px;padding:4px 12px;border-radius:16px;font-size:.78em;font-weight:600}
         .badge.on{background:rgba(76,175,80,.15);color:#4caf50;border:1px solid #4caf50}
         .badge.off{background:rgba(244,67,54,.15);color:#f44336;border:1px solid #f44336}
-        .reset-btn{padding:6px 16px;border:none;border-radius:7px;font-weight:700;font-size:.8em;cursor:pointer;background:linear-gradient(135deg,#d32f2f,#c62828);color:#fff;transition:all .2s;display:flex;align-items:center;gap:5px}
-        .reset-btn:hover{filter:brightness(1.2);box-shadow:0 0 14px rgba(211,47,47,.5)}
-        .reset-btn svg{width:14px;height:14px;fill:#fff}
+        .toggle-wrap{display:flex;align-items:center;gap:8px}
+        .toggle-lbl{font-size:.82em;font-weight:700;transition:color .3s}
+        .toggle-lbl.active{color:#4caf50}
+        .toggle-lbl.inactive{color:#546e7a}
+        .toggle-sw{position:relative;display:inline-block;width:44px;height:22px}
+        .toggle-sw input{opacity:0;width:0;height:0}
+        .toggle-slider{position:absolute;cursor:pointer;top:0;left:0;right:0;bottom:0;background:#f44336;border-radius:22px;transition:all .3s}
+        .toggle-slider:before{content:'';position:absolute;height:16px;width:16px;left:3px;bottom:3px;background:#fff;border-radius:50%;transition:all .3s}
+        .toggle-sw input:checked+.toggle-slider{background:#4caf50;box-shadow:0 0 12px rgba(76,175,80,.4)}
+        .toggle-sw input:checked+.toggle-slider:before{transform:translateX(22px)}
         .dot{width:7px;height:7px;border-radius:50%;background:currentColor;animation:pulse 2s infinite}
         @keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
 
@@ -122,7 +129,14 @@
         <h1>Distributed <span>Cache</span> System</h1>
         <div class="hdr-right">
             <div class="badge on" id="badge"><div class="dot"></div><span id="badgeTxt">Connected</span></div>
-            <button class="reset-btn" onclick="resetDashboard()" title="Reset database & stop all nodes"><svg viewBox="0 0 24 24"><path d="M17.65 6.35A7.96 7.96 0 0012 4C7.58 4 4.01 7.58 4.01 12S7.58 20 12 20c3.73 0 6.84-2.55 7.73-6h-2.08A5.99 5.99 0 0112 18c-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/></svg>RESET</button>
+            <div class="toggle-wrap">
+                <span class="toggle-lbl inactive" id="togOff">OFF</span>
+                <label class="toggle-sw">
+                    <input type="checkbox" id="togInput" checked onchange="toggleSystem(this.checked)">
+                    <span class="toggle-slider"></span>
+                </label>
+                <span class="toggle-lbl active" id="togOn">ON</span>
+            </div>
         </div>
     </header>
 
@@ -192,63 +206,46 @@
     <div class="g2">
         <div class="card">
             <h3>Network Node Topology</h3>
-            <svg viewBox="0 0 500 250" class="topo-svg" xmlns="http://www.w3.org/2000/svg">
-                <!-- Connection lines (dashed) -->
-                <line x1="250" y1="103" x2="250" y2="50" stroke="#1f3460" stroke-width="2" stroke-dasharray="5,4"/>
-                <line x1="308" y1="125" x2="390" y2="125" stroke="#1f3460" stroke-width="2" stroke-dasharray="5,4"/>
-                <line x1="250" y1="147" x2="250" y2="200" stroke="#1f3460" stroke-width="2" stroke-dasharray="5,4"/>
-                <line x1="192" y1="125" x2="110" y2="125" stroke="#1f3460" stroke-width="2" stroke-dasharray="5,4"/>
+            <svg viewBox="0 0 500 260" class="topo-svg" xmlns="http://www.w3.org/2000/svg">
+                <!-- Connection lines: Client → each Node -->
+                <line x1="65" y1="55" x2="245" y2="42" stroke="#1f3460" stroke-width="1.5" stroke-dasharray="5,4" id="connLineA"/>
+                <line x1="65" y1="55" x2="425" y2="55" stroke="#1f3460" stroke-width="1.5" stroke-dasharray="5,4" id="connLineB"/>
+                <line x1="65" y1="55" x2="425" y2="195" stroke="#1f3460" stroke-width="1.5" stroke-dasharray="5,4" id="connLineC"/>
+                <line x1="65" y1="55" x2="245" y2="218" stroke="#1f3460" stroke-width="1.5" stroke-dasharray="5,4" id="connLineD"/>
 
-                <!-- Flow labels on connections -->
-                <text x="262" y="80" fill="#546e7a" font-size="8" id="flowLabelA">0 req/s</text>
-                <text x="348" y="118" fill="#546e7a" font-size="8" text-anchor="middle" id="flowLabelB">0 req/s</text>
-                <text x="262" y="178" fill="#546e7a" font-size="8" id="flowLabelC">0 req/s</text>
-                <text x="152" y="118" fill="#546e7a" font-size="8" text-anchor="middle" id="flowLabelD">0 req/s</text>
+                <!-- Flow labels along each path -->
+                <text x="155" y="38" fill="#546e7a" font-size="8" id="flowLabelA">0 req/s</text>
+                <text x="245" y="46" fill="#546e7a" font-size="8" text-anchor="middle" id="flowLabelB">0 req/s</text>
+                <text x="260" y="138" fill="#546e7a" font-size="8" id="flowLabelC">0 req/s</text>
+                <text x="135" y="150" fill="#546e7a" font-size="8" id="flowLabelD">0 req/s</text>
 
-                <!-- Animated flow dots: LB → Node A (up) -->
-                <circle r="2.5" fill="#00d4ff" id="fA1"><animate attributeName="cy" values="103;50" dur="1.6s" repeatCount="indefinite" begin="0s"/><animate attributeName="cx" values="250;250" dur="1.6s" repeatCount="indefinite" begin="0s"/><animate attributeName="opacity" values="0;.8;.8;0" dur="1.6s" repeatCount="indefinite" begin="0s"/></circle>
-                <circle r="2.5" fill="#00d4ff" id="fA2"><animate attributeName="cy" values="103;50" dur="1.6s" repeatCount="indefinite" begin="0.53s"/><animate attributeName="cx" values="250;250" dur="1.6s" repeatCount="indefinite" begin="0.53s"/><animate attributeName="opacity" values="0;.8;.8;0" dur="1.6s" repeatCount="indefinite" begin="0.53s"/></circle>
-                <circle r="2.5" fill="#00d4ff" id="fA3"><animate attributeName="cy" values="103;50" dur="1.6s" repeatCount="indefinite" begin="1.06s"/><animate attributeName="cx" values="250;250" dur="1.6s" repeatCount="indefinite" begin="1.06s"/><animate attributeName="opacity" values="0;.8;.8;0" dur="1.6s" repeatCount="indefinite" begin="1.06s"/></circle>
+                <!-- Single animated flow dot (JS-driven, one path at a time) -->
+                <circle r="3.5" fill="#00d4ff" id="flowDot" cx="65" cy="55" opacity="0"/>
 
-                <!-- Animated flow dots: LB → Node B (right) -->
-                <circle r="2.5" fill="#00d4ff" id="fB1"><animate attributeName="cx" values="308;390" dur="1.6s" repeatCount="indefinite" begin="0s"/><animate attributeName="cy" values="125;125" dur="1.6s" repeatCount="indefinite" begin="0s"/><animate attributeName="opacity" values="0;.8;.8;0" dur="1.6s" repeatCount="indefinite" begin="0s"/></circle>
-                <circle r="2.5" fill="#00d4ff" id="fB2"><animate attributeName="cx" values="308;390" dur="1.6s" repeatCount="indefinite" begin="0.53s"/><animate attributeName="cy" values="125;125" dur="1.6s" repeatCount="indefinite" begin="0.53s"/><animate attributeName="opacity" values="0;.8;.8;0" dur="1.6s" repeatCount="indefinite" begin="0.53s"/></circle>
-                <circle r="2.5" fill="#00d4ff" id="fB3"><animate attributeName="cx" values="308;390" dur="1.6s" repeatCount="indefinite" begin="1.06s"/><animate attributeName="cy" values="125;125" dur="1.6s" repeatCount="indefinite" begin="1.06s"/><animate attributeName="opacity" values="0;.8;.8;0" dur="1.6s" repeatCount="indefinite" begin="1.06s"/></circle>
+                <!-- Client Node (circle, top-left) -->
+                <circle cx="65" cy="55" r="26" fill="#0e1a2e" stroke="#00d4ff" stroke-width="2.5" id="clientCircle"/>
+                <text x="65" y="52" text-anchor="middle" fill="#00d4ff" font-size="9.5" font-weight="700">Client</text>
+                <text x="65" y="65" text-anchor="middle" fill="#546e7a" font-size="7.5" id="topoLB">0 ops/s</text>
 
-                <!-- Animated flow dots: LB → Node C (down) -->
-                <circle r="2.5" fill="#00d4ff" id="fC1"><animate attributeName="cy" values="147;200" dur="1.6s" repeatCount="indefinite" begin="0s"/><animate attributeName="cx" values="250;250" dur="1.6s" repeatCount="indefinite" begin="0s"/><animate attributeName="opacity" values="0;.8;.8;0" dur="1.6s" repeatCount="indefinite" begin="0s"/></circle>
-                <circle r="2.5" fill="#00d4ff" id="fC2"><animate attributeName="cy" values="147;200" dur="1.6s" repeatCount="indefinite" begin="0.53s"/><animate attributeName="cx" values="250;250" dur="1.6s" repeatCount="indefinite" begin="0.53s"/><animate attributeName="opacity" values="0;.8;.8;0" dur="1.6s" repeatCount="indefinite" begin="0.53s"/></circle>
-                <circle r="2.5" fill="#00d4ff" id="fC3"><animate attributeName="cy" values="147;200" dur="1.6s" repeatCount="indefinite" begin="1.06s"/><animate attributeName="cx" values="250;250" dur="1.6s" repeatCount="indefinite" begin="1.06s"/><animate attributeName="opacity" values="0;.8;.8;0" dur="1.6s" repeatCount="indefinite" begin="1.06s"/></circle>
+                <!-- Node A (S0-S7) — top right -->
+                <rect x="190" y="18" width="110" height="42" rx="7" fill="#0e1a2e" stroke="#1f3460" stroke-width="1.5" id="topoRectA"/>
+                <text x="245" y="36" text-anchor="middle" fill="#64b5f6" font-size="9" font-weight="700">Node A</text>
+                <text x="245" y="52" text-anchor="middle" fill="#546e7a" font-size="7.5" id="topoInfoA">S0-S7 | 0 req</text>
 
-                <!-- Animated flow dots: LB → Node D (left) -->
-                <circle r="2.5" fill="#00d4ff" id="fD1"><animate attributeName="cx" values="192;110" dur="1.6s" repeatCount="indefinite" begin="0s"/><animate attributeName="cy" values="125;125" dur="1.6s" repeatCount="indefinite" begin="0s"/><animate attributeName="opacity" values="0;.8;.8;0" dur="1.6s" repeatCount="indefinite" begin="0s"/></circle>
-                <circle r="2.5" fill="#00d4ff" id="fD2"><animate attributeName="cx" values="192;110" dur="1.6s" repeatCount="indefinite" begin="0.53s"/><animate attributeName="cy" values="125;125" dur="1.6s" repeatCount="indefinite" begin="0.53s"/><animate attributeName="opacity" values="0;.8;.8;0" dur="1.6s" repeatCount="indefinite" begin="0.53s"/></circle>
-                <circle r="2.5" fill="#00d4ff" id="fD3"><animate attributeName="cx" values="192;110" dur="1.6s" repeatCount="indefinite" begin="1.06s"/><animate attributeName="cy" values="125;125" dur="1.6s" repeatCount="indefinite" begin="1.06s"/><animate attributeName="opacity" values="0;.8;.8;0" dur="1.6s" repeatCount="indefinite" begin="1.06s"/></circle>
+                <!-- Node B (S8-S15) — far right -->
+                <rect x="370" y="34" width="110" height="42" rx="7" fill="#0e1a2e" stroke="#1f3460" stroke-width="1.5" id="topoRectB"/>
+                <text x="425" y="52" text-anchor="middle" fill="#64b5f6" font-size="9" font-weight="700">Node B</text>
+                <text x="425" y="68" text-anchor="middle" fill="#546e7a" font-size="7.5" id="topoInfoB">S8-S15 | 0 req</text>
 
-                <!-- Load Balancer (center) -->
-                <rect x="192" y="103" width="116" height="44" rx="8" fill="#0e1a2e" stroke="#00d4ff" stroke-width="2"/>
-                <text x="250" y="121" text-anchor="middle" fill="#00d4ff" font-size="10" font-weight="700">Load Balancer</text>
-                <text x="250" y="138" text-anchor="middle" fill="#546e7a" font-size="8" id="topoLB">0 ops/s</text>
+                <!-- Node C (S16-S23) — bottom right -->
+                <rect x="370" y="174" width="110" height="42" rx="7" fill="#0e1a2e" stroke="#1f3460" stroke-width="1.5" id="topoRectC"/>
+                <text x="425" y="192" text-anchor="middle" fill="#64b5f6" font-size="9" font-weight="700">Node C</text>
+                <text x="425" y="208" text-anchor="middle" fill="#546e7a" font-size="7.5" id="topoInfoC">S16-S23 | 0 req</text>
 
-                <!-- Node A (top) S0-S7 -->
-                <rect x="200" y="10" width="100" height="38" rx="6" fill="#0e1a2e" stroke="#1f3460" stroke-width="1.5" id="topoRectA"/>
-                <text x="250" y="26" text-anchor="middle" fill="#64b5f6" font-size="9" font-weight="700">Node A</text>
-                <text x="250" y="40" text-anchor="middle" fill="#546e7a" font-size="7.5" id="topoInfoA">S0-S7 | 0 req</text>
-
-                <!-- Node B (right) S8-S15 -->
-                <rect x="390" y="106" width="100" height="38" rx="6" fill="#0e1a2e" stroke="#1f3460" stroke-width="1.5" id="topoRectB"/>
-                <text x="440" y="122" text-anchor="middle" fill="#64b5f6" font-size="9" font-weight="700">Node B</text>
-                <text x="440" y="136" text-anchor="middle" fill="#546e7a" font-size="7.5" id="topoInfoB">S8-S15 | 0 req</text>
-
-                <!-- Node C (bottom) S16-S23 -->
-                <rect x="200" y="202" width="100" height="38" rx="6" fill="#0e1a2e" stroke="#1f3460" stroke-width="1.5" id="topoRectC"/>
-                <text x="250" y="218" text-anchor="middle" fill="#64b5f6" font-size="9" font-weight="700">Node C</text>
-                <text x="250" y="232" text-anchor="middle" fill="#546e7a" font-size="7.5" id="topoInfoC">S16-S23 | 0 req</text>
-
-                <!-- Node D (left) S24-S31 -->
-                <rect x="10" y="106" width="100" height="38" rx="6" fill="#0e1a2e" stroke="#1f3460" stroke-width="1.5" id="topoRectD"/>
-                <text x="60" y="122" text-anchor="middle" fill="#64b5f6" font-size="9" font-weight="700">Node D</text>
-                <text x="60" y="136" text-anchor="middle" fill="#546e7a" font-size="7.5" id="topoInfoD">S24-S31 | 0 req</text>
+                <!-- Node D (S24-S31) — bottom center -->
+                <rect x="190" y="197" width="110" height="42" rx="7" fill="#0e1a2e" stroke="#1f3460" stroke-width="1.5" id="topoRectD"/>
+                <text x="245" y="215" text-anchor="middle" fill="#64b5f6" font-size="9" font-weight="700">Node D</text>
+                <text x="245" y="231" text-anchor="middle" fill="#546e7a" font-size="7.5" id="topoInfoD">S24-S31 | 0 req</text>
             </svg>
         </div>
         <div class="card" style="border-color:#4a1a7a">
@@ -293,6 +290,23 @@ let prevOps=0, prevHits=0, prevMisses=0;
 let trafficHistory = [];
 const MAX_HIST = 60;
 const S = Array.from({length:32},function(_,i){return 'S'+i});
+
+/* ON/OFF toggle state */
+var isRunning = true;
+var pollInterval = null;
+
+/* Node topology animation state */
+var topoPathIndex = 0;
+var topoPaths = [
+    {x1:65,y1:55,x2:245,y2:39},
+    {x1:65,y1:55,x2:425,y2:55},
+    {x1:65,y1:55,x2:425,y2:195},
+    {x1:65,y1:55,x2:245,y2:218}
+];
+var topoNodeIds = ['A','B','C','D'];
+var dotProgress = 0;
+var dotAnimFrame = null;
+var topoNodeHeatLevels = ['cold','cold','cold','cold'];
 
 /* ════════════════════════════════════════════════════════════════
    CHARTS
@@ -357,19 +371,13 @@ function updateNodeTopo(segReq, segHeat, opsPerSec){
             if((segHeat[i]||0) > maxH) maxH = segHeat[i]||0;
         }
         var level = getNodeHeatLevel(maxH);
+        topoNodeHeatLevels[n] = level;
         var rect = document.getElementById('topoRect'+r.id);
         rect.setAttribute('stroke', nodeColors[level]);
         if(level==='stroke'){rect.setAttribute('stroke-width','2.5')} else {rect.setAttribute('stroke-width','1.5')}
 
         var info = document.getElementById('topoInfo'+r.id);
         info.textContent = 'S'+r.start+'-S'+r.end+' | '+reqSum.toLocaleString()+' req';
-
-        // Update flow dot colors
-        var dotColor = flowDotColors[level];
-        for(var di=1; di<=3; di++){
-            var dot = document.getElementById('f'+r.id+di);
-            if(dot) dot.setAttribute('fill', dotColor);
-        }
 
         // Update flow labels
         var fl = document.getElementById('flowLabel'+r.id);
@@ -378,8 +386,38 @@ function updateNodeTopo(segReq, segHeat, opsPerSec){
             fl.textContent = pct + ' req/s';
         }
     }
-    // LB center label
+    // Client label
     document.getElementById('topoLB').textContent = opsPerSec + ' ops/s';
+}
+
+/* ════════════════════════════════════════════════════════════════
+   NODE TOPOLOGY ANIMATION — one path at a time
+   ════════════════════════════════════════════════════════════════ */
+function animateFlowDot(){
+    if(!isRunning){
+        var fd=document.getElementById('flowDot');
+        if(fd) fd.setAttribute('opacity','0');
+        return;
+    }
+    var p = topoPaths[topoPathIndex];
+    dotProgress += 0.012;
+    if(dotProgress >= 1){
+        dotProgress = 0;
+        // Dim previous path
+        document.getElementById('connLine'+topoNodeIds[topoPathIndex]).setAttribute('stroke','#1f3460');
+        topoPathIndex = (topoPathIndex + 1) % 4;
+        p = topoPaths[topoPathIndex];
+    }
+    // Highlight active path with heat-appropriate color
+    var lvl = topoNodeHeatLevels[topoPathIndex];
+    var dotCol = flowDotColors[lvl];
+    document.getElementById('connLine'+topoNodeIds[topoPathIndex]).setAttribute('stroke', dotCol);
+    var dot = document.getElementById('flowDot');
+    dot.setAttribute('cx', p.x1 + (p.x2-p.x1)*dotProgress);
+    dot.setAttribute('cy', p.y1 + (p.y2-p.y1)*dotProgress);
+    dot.setAttribute('fill', dotCol);
+    dot.setAttribute('opacity','0.9');
+    dotAnimFrame = requestAnimationFrame(animateFlowDot);
 }
 
 /* ════════════════════════════════════════════════════════════════
@@ -420,9 +458,64 @@ async function resetDashboard(){
             document.getElementById('topoRect'+ids[n]).setAttribute('stroke','#1f3460');
             document.getElementById('topoInfo'+ids[n]).textContent='S'+(n*8)+'-S'+(n*8+7)+' | 0 req';
             document.getElementById('flowLabel'+ids[n]).textContent='0 req/s';
+            document.getElementById('connLine'+ids[n]).setAttribute('stroke','#1f3460');
         }
         document.getElementById('topoLB').textContent='0 ops/s';
+        document.getElementById('flowDot').setAttribute('opacity','0');
+        topoNodeHeatLevels = ['cold','cold','cold','cold'];
+        topoPathIndex=0; dotProgress=0;
+        // Reset KPIs to zero
+        document.getElementById('kTotalOps').textContent='0';
+        document.getElementById('kOps').textContent='0';
+        document.getElementById('kHitRate').textContent='0%';
+        document.getElementById('kHits').textContent='0';
+        document.getElementById('kMiss').textContent='0';
+        document.getElementById('kKeys').textContent='0';
+        document.getElementById('kFlushed').textContent='0';
+        document.getElementById('kContentions').textContent='0';
+        // Reset WB pipeline
+        document.getElementById('wbV1').textContent='0';
+        document.getElementById('wbV2').textContent='0%';
+        document.getElementById('wbV3').textContent='0';
+        document.getElementById('wbV4').textContent='0';
+        document.getElementById('wbV5').textContent='OK';
+        // Reset status bar
+        document.getElementById('sbPinn').textContent='Normal';document.getElementById('sbPinn').className='sb-val c-purple';
+        document.getElementById('sbLock').textContent='All Free';document.getElementById('sbLock').className='sb-val c-green';
+        document.getElementById('sbWB').textContent='Idle';document.getElementById('sbWB').className='sb-val c-green';
+        document.getElementById('sbSegs').textContent='32 Active';
     }catch(e){}
+}
+
+/* ════════════════════════════════════════════════════════════════
+   ON/OFF TOGGLE
+   ════════════════════════════════════════════════════════════════ */
+function toggleSystem(on){
+    isRunning = on;
+    if(!on){
+        // Stop polling
+        if(pollInterval){clearInterval(pollInterval);pollInterval=null}
+        // Stop animation
+        if(dotAnimFrame){cancelAnimationFrame(dotAnimFrame);dotAnimFrame=null}
+        // Reset dashboard to zeros
+        resetDashboard();
+        // Update UI
+        document.getElementById('badge').className='badge off';
+        document.getElementById('badgeTxt').textContent='Stopped';
+        document.getElementById('sbServer').textContent='PAUSED';
+        document.getElementById('sbServer').className='sb-val c-orange';
+        document.getElementById('togOn').className='toggle-lbl inactive';
+        document.getElementById('togOff').className='toggle-lbl';
+        document.getElementById('togOff').style.color='#f44336';
+    } else {
+        // Resume
+        document.getElementById('togOn').className='toggle-lbl active';
+        document.getElementById('togOff').className='toggle-lbl inactive';
+        document.getElementById('togOff').style.color='';
+        pollInterval = setInterval(poll, 1000);
+        poll();
+        animateFlowDot();
+    }
 }
 
 async function fireBurst(){
@@ -485,6 +578,7 @@ function addReqLog(cmd, key, lat, isHit){
 var prevPinnEvents=0, prevWbEvents=0, prevLockEvents=0;
 
 async function poll(){
+    if(!isRunning) return;
     try{
         var r = await fetch(API+'/metrics');
         var d = await r.json();
@@ -681,8 +775,9 @@ async function poll(){
     }
 }
 
-setInterval(poll, 1000);
+pollInterval = setInterval(poll, 1000);
 poll();
+animateFlowDot();
 </script>
 </body>
 </html>
