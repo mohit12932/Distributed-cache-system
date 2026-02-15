@@ -63,16 +63,25 @@ public:
         auto dirty = collector_();
         if (dirty.empty()) return;
 
-        if (backend_->batch_store(dirty)) {
-            for (size_t i = 0; i < dirty.size(); ++i) {
-                clearer_(dirty[i].first);
+        // Flush in smaller batches to limit peak memory usage (32-bit safe)
+        const size_t BATCH_LIMIT = 5000;
+        size_t offset = 0;
+        while (offset < dirty.size()) {
+            size_t end = std::min(offset + BATCH_LIMIT, dirty.size());
+            std::vector<std::pair<std::string, std::string>> batch(dirty.begin() + offset, dirty.begin() + end);
+            if (backend_->batch_store(batch)) {
+                for (size_t i = 0; i < batch.size(); ++i) {
+                    clearer_(batch[i].first);
+                }
+            } else {
+                std::cerr << "[WriteBack] ERROR: batch_store failed!\n";
+                return;
             }
-            flush_count_.fetch_add(1);
-            std::cout << "[WriteBack] Flushed " << dirty.size()
-                      << " dirty entries to disk.\n";
-        } else {
-            std::cerr << "[WriteBack] ERROR: batch_store failed!\n";
+            offset = end;
         }
+        flush_count_.fetch_add(1);
+        std::cout << "[WriteBack] Flushed " << dirty.size()
+                  << " dirty entries to disk.\n";
     }
 
     /** Trigger an out-of-cycle flush (e.g. dirty set size exceeded). */

@@ -81,15 +81,20 @@ public:
 
     bool GetEntry(uint64_t index, LogEntry& out) const {
         compat::LockGuard<compat::Mutex> lock(const_cast<compat::Mutex&>(mu_));
-        if (index == 0 || index > entries_.size()) return false;
-        out = entries_[index - 1];
-        return true;
+        // After compaction, entries may not start at index 1
+        for (const auto& e : entries_) {
+            if (e.index == index) { out = e; return true; }
+        }
+        return false;
     }
 
     uint64_t TermAt(uint64_t index) const {
         compat::LockGuard<compat::Mutex> lock(const_cast<compat::Mutex&>(mu_));
-        if (index == 0 || index > entries_.size()) return 0;
-        return entries_[index - 1].term;
+        if (index == 0) return 0;
+        for (const auto& e : entries_) {
+            if (e.index == index) return e.term;
+        }
+        return 0;
     }
 
     void Append(const LogEntry& entry) {
@@ -114,19 +119,42 @@ public:
         RewriteLog();
     }
 
-    // Get entries from start_index to end (for replication)
-    std::vector<LogEntry> GetRange(uint64_t start_index) const {
+    // Compact log: remove entries before compact_index (keep from compact_index onward)
+    void CompactBefore(uint64_t compact_index) {
+        compat::LockGuard<compat::Mutex> lock(mu_);
+        if (compact_index <= 1 || entries_.empty()) return;
+        // Find how many entries to remove (entries are 1-indexed)
+        size_t remove_count = 0;
+        for (size_t i = 0; i < entries_.size(); i++) {
+            if (entries_[i].index < compact_index) remove_count++;
+            else break;
+        }
+        if (remove_count == 0) return;
+        entries_.erase(entries_.begin(), entries_.begin() + remove_count);
+        // Shrink to fit to actually free memory
+        entries_.shrink_to_fit();
+        RewriteLog();
+    }
+
+    // Get entries from start_index to end (for replication), capped at max_entries
+    std::vector<LogEntry> GetRange(uint64_t start_index, size_t max_entries = 500) const {
         compat::LockGuard<compat::Mutex> lock(const_cast<compat::Mutex&>(mu_));
         std::vector<LogEntry> result;
-        for (size_t i = start_index; i <= entries_.size(); i++) {
-            result.push_back(entries_[i - 1]);
+        size_t count = 0;
+        for (size_t i = 0; i < entries_.size() && count < max_entries; i++) {
+            if (entries_[i].index >= start_index) {
+                result.push_back(entries_[i]);
+                count++;
+            }
         }
         return result;
     }
 
     bool MatchesAt(uint64_t index, uint64_t term) const {
         if (index == 0) return true;  // empty log matches anything
-        return TermAt(index) == term;
+        uint64_t t = TermAt(index);
+        if (t == 0) return true;  // entry was compacted, assume match
+        return t == term;
     }
 
 private:

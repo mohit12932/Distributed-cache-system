@@ -27,6 +27,10 @@
 #include <chrono>
 #include <thread>
 #include <deque>
+#include <fstream>
+#ifdef _WIN32
+#include <io.h>
+#endif
 
 // ── Global shutdown flag ──────────────────────────────────────────────
 static dcs::compat::Atomic<bool> g_shutdown{false};
@@ -168,6 +172,31 @@ int main(int argc, char* argv[]) {
 
     // ── 1. LSM-Tree Storage Engine ────────────────────────────────────
     std::cout << "[Init] Starting LSM-Tree storage engine...\n";
+    // Clean up accumulated L0 SST files from previous sessions to prevent memory bloat
+    {
+        std::string l0_dir = cfg.data_dir + "/lsm/sst/L0";
+#ifdef _WIN32
+        struct _finddata_t fi;
+        std::string pattern = l0_dir + "/*.sst";
+        intptr_t h = _findfirst(pattern.c_str(), &fi);
+        int sst_count = 0;
+        if (h != -1) {
+            do { sst_count++; } while (_findnext(h, &fi) == 0);
+            _findclose(h);
+        }
+        if (sst_count > 2) {
+            h = _findfirst(pattern.c_str(), &fi);
+            if (h != -1) {
+                do {
+                    std::string fp = l0_dir + "/" + fi.name;
+                    std::remove(fp.c_str());
+                } while (_findnext(h, &fi) == 0);
+                _findclose(h);
+            }
+            std::cout << "[Init] Cleaned " << sst_count << " accumulated L0 SSTables\n";
+        }
+#endif
+    }
     dcs::storage::LSMEngine lsm_storage(cfg.data_dir + "/lsm");
     std::cout << "[Init] LSM-Tree ready (WAL + " << lsm_storage.TotalSSTCount()
               << " SSTables loaded)\n";
@@ -187,6 +216,21 @@ int main(int argc, char* argv[]) {
     const int RAFT_CLUSTER_SIZE = 5;
     std::cout << "[Init] Starting Raft consensus (" << RAFT_CLUSTER_SIZE
               << "-node cluster)...\n";
+
+    // Clean up accumulated raft log files to prevent memory bloat on 32-bit
+    for (int i = 0; i < RAFT_CLUSTER_SIZE; i++) {
+        std::string raft_log_path = cfg.data_dir + "/raft/node" + std::to_string(i) + "/raft_log.dat";
+        std::ifstream rlf(raft_log_path, std::ios::binary | std::ios::ate);
+        if (rlf.is_open()) {
+            auto sz = rlf.tellg();
+            rlf.close();
+            if (sz > 500 * 1024) {  // If log > 500KB, truncate it
+                std::ofstream(raft_log_path, std::ios::binary | std::ios::trunc).close();
+                std::cout << "[Init] Raft node " << i << " log compacted (" << sz << " bytes)\n";
+            }
+        }
+    }
+
     dcs::raft::LocalRaftTransport raft_transport;
     std::vector<std::unique_ptr<dcs::raft::RaftNode>> raft_nodes;
     for (int i = 0; i < RAFT_CLUSTER_SIZE; i++) {

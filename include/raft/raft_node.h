@@ -262,6 +262,12 @@ private:
                     apply_cb_(entry.index, entry.command);
                 }
             }
+            // Compact old log entries to bound memory usage
+            // Keep last 1000 committed entries, discard older ones
+            if (last_applied_ > 1000) {
+                uint64_t compact_before = last_applied_ - 1000;
+                log_.CompactBefore(compact_before);
+            }
         }
     }
 
@@ -331,7 +337,7 @@ private:
                 args.prev_log_index = (next > 1) ? next - 1 : 0;
                 args.prev_log_term  = log_.TermAt(args.prev_log_index);
                 if (log_.LastIndex() >= next) {
-                    args.entries = log_.GetRange(next);
+                    args.entries = log_.GetRange(next, 200);
                 }
                 hbs.push_back({peer, std::move(args)});
             }

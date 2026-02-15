@@ -160,6 +160,18 @@ private:
     }
 
     void handleClient(http_socket_t sock) {
+        // Set socket timeout to prevent hung threads (5 seconds)
+#ifdef _WIN32
+        DWORD timeout_ms = 5000;
+        setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO, (const char*)&timeout_ms, sizeof(timeout_ms));
+        setsockopt(sock, SOL_SOCKET, SO_SNDTIMEO, (const char*)&timeout_ms, sizeof(timeout_ms));
+#else
+        struct timeval tv;
+        tv.tv_sec = 5;
+        tv.tv_usec = 0;
+        setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv));
+        setsockopt(sock, SOL_SOCKET, SO_SNDTIMEO, &tv, sizeof(tv));
+#endif
         char buf[8192];
         int n = recv(sock, buf, sizeof(buf) - 1, 0);
         if (n <= 0) {

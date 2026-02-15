@@ -51,7 +51,7 @@ struct LSMStats {
 class LSMEngine : public persistence::StorageBackend {
 public:
     static constexpr int kMaxLevels      = 4;
-    static constexpr int kL0CompactTrig  = 4;
+    static constexpr int kL0CompactTrig  = 2;
     static constexpr int kLevelMultiplier = 10;
 
     explicit LSMEngine(const std::string& data_dir)
@@ -272,37 +272,38 @@ private:
         compat::LockGuard<compat::Mutex> lock(sst_mu_);
         if (levels_[level].empty()) return;
 
-        // Merge all SSTables at this level into next level
-        std::unordered_map<std::string, std::string> merged;
-        for (auto& sst : levels_[level]) {
-            auto keys = sst->AllKeys();
-            for (const auto& key : keys) {
-                std::string val;
-                if (sst->Get(key, val)) {
-                    merged[key] = val;
-                }
+        // Merge SSTables: collect keys only (not values) to reduce memory
+        // Use a map of key → (level, sst_index) to track which SSTable has each key
+        std::unordered_map<std::string, std::pair<int, int>> key_source;
+        for (int i = 0; i < (int)levels_[level].size(); i++) {
+            auto keys = levels_[level][i]->AllKeys();
+            for (auto& key : keys) {
+                key_source[std::move(key)] = {level, i};
             }
         }
-        // Include existing next-level tables
-        for (auto& sst : levels_[level + 1]) {
-            auto keys = sst->AllKeys();
-            for (const auto& key : keys) {
-                if (merged.find(key) == merged.end()) {
-                    std::string val;
-                    if (sst->Get(key, val)) merged[key] = val;
+        for (int i = 0; i < (int)levels_[level + 1].size(); i++) {
+            auto keys = levels_[level + 1][i]->AllKeys();
+            for (auto& key : keys) {
+                if (key_source.find(key) == key_source.end()) {
+                    key_source[std::move(key)] = {level + 1, i};
                 }
             }
         }
 
-        // Write merged SSTable
+        // Write merged SSTable by streaming values from source SSTables
         uint64_t counter = sstable_counter_++;
         std::string sst_path = data_dir_ + "/sst/L" + std::to_string(level + 1) +
             "/sst_" + std::to_string(counter) + ".sst";
         SSTableWriter writer(sst_path);
-        for (const auto& kv : merged) {
-            writer.Add(kv.first, kv.second);
+        for (const auto& ks : key_source) {
+            std::string val;
+            auto& src = levels_[ks.second.first][ks.second.second];
+            if (src->Get(ks.first, val)) {
+                writer.Add(ks.first, val);
+            }
         }
         writer.Finish();
+        key_source.clear();  // Free memory before loading new reader
 
         // Remove old SSTables (delete files)
         for (auto& sst : levels_[level]) {

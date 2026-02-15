@@ -118,3 +118,57 @@
 [HTTP] bind() successful on port 8080
 [HTTP] listen() successful
 [HTTP] Dashboard server listening on http://localhost:8080
+[HTTP] acceptLoop() started
+[HTTP] socket created successfully
+[HTTP] SO_REUSEADDR set
+[HTTP] bind() successful on port 8080
+[HTTP] listen() successful
+[HTTP] Dashboard server listening on http://localhost:8080
+[HTTP] acceptLoop() started
+[HTTP] socket created successfully
+[HTTP] SO_REUSEADDR set
+[HTTP] bind() successful on port 8080
+[HTTP] listen() successful
+[HTTP] Dashboard server listening on http://localhost:8080
+[HTTP] acceptLoop() started
+[HTTP] socket created successfully
+[HTTP] SO_REUSEADDR set
+[HTTP] bind() successful on port 8080
+[HTTP] listen() successful
+[HTTP] Dashboard server listening on http://localhost:8080
+[HTTP] acceptLoop() started
+[HTTP] socket created successfully
+[HTTP] SO_REUSEADDR set
+[HTTP] bind() successful on port 8080
+[HTTP] listen() successful
+[HTTP] Dashboard server listening on http://localhost:8080
+[HTTP] acceptLoop() started
+[HTTP] socket created successfully
+[HTTP] SO_REUSEADDR set
+[HTTP] bind() successful on port 8080
+[HTTP] listen() successful
+[HTTP] Dashboard server listening on http://localhost:8080
+[HTTP] acceptLoop() started
+[HTTP] socket created successfully
+[HTTP] SO_REUSEADDR set
+[HTTP] bind() successful on port 8080
+[HTTP] listen() successful
+[HTTP] Dashboard server listening on http://localhost:8080
+[HTTP] acceptLoop() started
+[HTTP] socket created successfully
+[HTTP] SO_REUSEADDR set
+[HTTP] bind() successful on port 8080
+[HTTP] listen() successful
+[HTTP] Dashboard server listening on http://localhost:8080
+[HTTP] acceptLoop() started
+[HTTP] socket created successfully
+[HTTP] SO_REUSEADDR set
+[HTTP] bind() successful on port 8080
+[HTTP] listen() successful
+[HTTP] Dashboard server listening on http://localhost:8080
+[HTTP] acceptLoop() started
+[HTTP] socket created successfully
+[HTTP] SO_REUSEADDR set
+[HTTP] bind() successful on port 8080
+[HTTP] listen() successful
+[HTTP] Dashboard server listening on http://localhost:8080
