@@ -26,6 +26,7 @@
 #define DCS_MKDIR(p)  _mkdir(p)
 #define DCS_ACCESS(p) _access(p, 0)
 #else
+#include <dirent.h>
 #include <sys/stat.h>
 #include <unistd.h>
 #define DCS_MKDIR(p)  mkdir(p, 0755)
