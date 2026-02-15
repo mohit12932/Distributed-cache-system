@@ -67,10 +67,9 @@
 ```
 ## 📸 Screenshots
 
-<img width="1438" height="899" alt="image" src="https://github.com/user-attachments/assets/32dfc418-d27e-413f-bdfd-812feaa6d9ba" />
+<img width="1428" height="600" alt="Screenshot 2026-02-16 003806" src="https://github.com/user-attachments/assets/5638764f-abbb-49ec-91f4-3d6ade550875" />
+<img width="1426" height="539" alt="image" src="https://github.com/user-attachments/assets/5608bb65-4e24-4da1-9d3c-b5113051659d" />
 
-
-<img width="1428" height="894" alt="image" src="https://github.com/user-attachments/assets/14f98c51-1452-4bbc-99c2-0112a3ca9431" />
 
 
 *The main dashboard view showing user analytics.*
