@@ -137,7 +137,7 @@ canvas{max-height:175px}
 .pinn-stat strong{color:#a78bfa}
 
 /* ═══ SYSTEM LOG ═══ */
-.sys-log{flex:1;max-height:100px;overflow-y:auto;background:#0a0c15;border:1px solid #1e3050;
+.sys-log{flex:1;min-height:40px;overflow-y:auto;background:#0a0c15;border:1px solid #1e3050;
   border-radius:5px;padding:6px 8px;margin-top:8px;font-family:'Cascadia Code','Consolas',monospace;font-size:.54em;line-height:1.7}
 .sys-log div{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 
@@ -160,7 +160,7 @@ canvas{max-height:175px}
         <div class="badge on" id="badge"><div class="dot"></div><span id="badgeTxt">Connected</span></div>
         <div class="slider-wrap">
             <label>Traffic</label>
-            <input type="range" id="speedSlider" min="0" max="1000" value="0" step="10"
+            <input type="range" id="speedSlider" min="0" max="12000" value="0" step="50"
                    oninput="onSliderInput(this.value)" onchange="onSliderChange(this.value)">
             <div class="slider-val" id="speedVal">0 ops/s</div>
         </div>
@@ -315,46 +315,46 @@ canvas{max-height:175px}
                 <!-- Packet animation groups -->
                 <g id="pktsClient"></g><g id="pktsRep1"></g><g id="pktsRep2"></g><g id="pktsRep3"></g><g id="pktsRep4"></g>
 
-                <!-- Client node (top-left — circular with filled background) -->
-                <circle cx="75" cy="60" r="34" fill="url(#gClient)" stroke="#fbbf24" stroke-width="2.5"/>
-                <text x="75" y="52" text-anchor="middle" fill="#fbbf24" font-size="9" font-weight="700">Client</text>
-                <text x="75" y="64" text-anchor="middle" fill="#64748b" font-size="6" id="topoOps">0 ops/s</text>
-                <text x="75" y="74" text-anchor="middle" fill="#475569" font-size="5">SET / GET →</text>
+                <!-- Client node (top-left — solid bright yellow background) -->
+                <circle cx="75" cy="60" r="34" fill="#fbbf24" stroke="#92400e" stroke-width="2.5"/>
+                <text x="75" y="52" text-anchor="middle" fill="#000" font-size="9" font-weight="700">Client</text>
+                <text x="75" y="64" text-anchor="middle" fill="#000" font-size="6" id="topoOps">0 ops/s</text>
+                <text x="75" y="74" text-anchor="middle" fill="#000" font-size="5">SET / GET →</text>
 
-                <!-- Node 0 (upper-right — default leader position) -->
-                <circle cx="430" cy="65" r="38" fill="url(#gLeader)" stroke="#4ade80" stroke-width="2.5" id="nodeBox0"/>
-                <text x="430" y="50" text-anchor="middle" fill="#38bdf8" font-size="8" font-weight="700">Node 0</text>
-                <text x="430" y="62" text-anchor="middle" fill="#4ade80" font-size="7" font-weight="800" id="role0">LEADER</text>
-                <text x="430" y="72" text-anchor="middle" fill="#475569" font-size="5">S0–S6</text>
-                <text x="430" y="84" text-anchor="middle" fill="#4ade80" font-size="5.5" font-weight="600" id="req0">0 req</text>
+                <!-- Node 0 (upper-right — default leader, solid green) -->
+                <circle cx="430" cy="65" r="38" fill="#4ade80" stroke="#166534" stroke-width="2.5" id="nodeBox0"/>
+                <text x="430" y="50" text-anchor="middle" fill="#000" font-size="8" font-weight="700">Node 0</text>
+                <text x="430" y="62" text-anchor="middle" fill="#000" font-size="7" font-weight="800" id="role0">LEADER</text>
+                <text x="430" y="72" text-anchor="middle" fill="#000" font-size="5">S0–S6</text>
+                <text x="430" y="84" text-anchor="middle" fill="#000" font-size="5.5" font-weight="600" id="req0">0 req</text>
 
-                <!-- Node 1 (right) -->
-                <circle cx="490" cy="185" r="34" fill="url(#gFollower)" stroke="#1e3050" stroke-width="2" id="nodeBox1"/>
-                <text x="490" y="178" text-anchor="middle" fill="#38bdf8" font-size="8" font-weight="700">Node 1</text>
-                <text x="490" y="189" text-anchor="middle" fill="#64748b" font-size="6.5" font-weight="600" id="role1">Follower</text>
-                <text x="490" y="199" text-anchor="middle" fill="#475569" font-size="5">S7–S12</text>
-                <text x="490" y="209" text-anchor="middle" fill="#38bdf8" font-size="5" font-weight="600" id="req1">0 req</text>
+                <!-- Node 1 (right — solid green) -->
+                <circle cx="490" cy="185" r="34" fill="#4ade80" stroke="#166534" stroke-width="2" id="nodeBox1"/>
+                <text x="490" y="178" text-anchor="middle" fill="#000" font-size="8" font-weight="700">Node 1</text>
+                <text x="490" y="189" text-anchor="middle" fill="#000" font-size="6.5" font-weight="600" id="role1">Follower</text>
+                <text x="490" y="199" text-anchor="middle" fill="#000" font-size="5">S7–S12</text>
+                <text x="490" y="209" text-anchor="middle" fill="#000" font-size="5" font-weight="600" id="req1">0 req</text>
 
-                <!-- Node 2 (lower-right) -->
-                <circle cx="400" cy="275" r="34" fill="url(#gFollower)" stroke="#1e3050" stroke-width="2" id="nodeBox2"/>
-                <text x="400" y="268" text-anchor="middle" fill="#38bdf8" font-size="8" font-weight="700">Node 2</text>
-                <text x="400" y="279" text-anchor="middle" fill="#64748b" font-size="6.5" font-weight="600" id="role2">Follower</text>
-                <text x="400" y="289" text-anchor="middle" fill="#475569" font-size="5">S13–S18</text>
-                <text x="400" y="299" text-anchor="middle" fill="#38bdf8" font-size="5" font-weight="600" id="req2">0 req</text>
+                <!-- Node 2 (lower-right — solid green) -->
+                <circle cx="400" cy="275" r="34" fill="#4ade80" stroke="#166534" stroke-width="2" id="nodeBox2"/>
+                <text x="400" y="268" text-anchor="middle" fill="#000" font-size="8" font-weight="700">Node 2</text>
+                <text x="400" y="279" text-anchor="middle" fill="#000" font-size="6.5" font-weight="600" id="role2">Follower</text>
+                <text x="400" y="289" text-anchor="middle" fill="#000" font-size="5">S13–S18</text>
+                <text x="400" y="299" text-anchor="middle" fill="#000" font-size="5" font-weight="600" id="req2">0 req</text>
 
-                <!-- Node 3 (bottom-center / down) -->
-                <circle cx="210" cy="280" r="34" fill="url(#gFollower)" stroke="#1e3050" stroke-width="2" id="nodeBox3"/>
-                <text x="210" y="273" text-anchor="middle" fill="#38bdf8" font-size="8" font-weight="700">Node 3</text>
-                <text x="210" y="284" text-anchor="middle" fill="#64748b" font-size="6.5" font-weight="600" id="role3">Follower</text>
-                <text x="210" y="294" text-anchor="middle" fill="#475569" font-size="5">S19–S24</text>
-                <text x="210" y="304" text-anchor="middle" fill="#38bdf8" font-size="5" font-weight="600" id="req3">0 req</text>
+                <!-- Node 3 (bottom-center — solid green) -->
+                <circle cx="210" cy="280" r="34" fill="#4ade80" stroke="#166534" stroke-width="2" id="nodeBox3"/>
+                <text x="210" y="273" text-anchor="middle" fill="#000" font-size="8" font-weight="700">Node 3</text>
+                <text x="210" y="284" text-anchor="middle" fill="#000" font-size="6.5" font-weight="600" id="role3">Follower</text>
+                <text x="210" y="294" text-anchor="middle" fill="#000" font-size="5">S19–S24</text>
+                <text x="210" y="304" text-anchor="middle" fill="#000" font-size="5" font-weight="600" id="req3">0 req</text>
 
-                <!-- Node 4 (bottom-left) -->
-                <circle cx="100" cy="200" r="34" fill="url(#gFollower)" stroke="#1e3050" stroke-width="2" id="nodeBox4"/>
-                <text x="100" y="193" text-anchor="middle" fill="#38bdf8" font-size="8" font-weight="700">Node 4</text>
-                <text x="100" y="204" text-anchor="middle" fill="#64748b" font-size="6.5" font-weight="600" id="role4">Follower</text>
-                <text x="100" y="214" text-anchor="middle" fill="#475569" font-size="5">S25–S31</text>
-                <text x="100" y="224" text-anchor="middle" fill="#38bdf8" font-size="5" font-weight="600" id="req4">0 req</text>
+                <!-- Node 4 (bottom-left — solid green) -->
+                <circle cx="100" cy="200" r="34" fill="#4ade80" stroke="#166534" stroke-width="2" id="nodeBox4"/>
+                <text x="100" y="193" text-anchor="middle" fill="#000" font-size="8" font-weight="700">Node 4</text>
+                <text x="100" y="204" text-anchor="middle" fill="#000" font-size="6.5" font-weight="600" id="role4">Follower</text>
+                <text x="100" y="214" text-anchor="middle" fill="#000" font-size="5">S25–S31</text>
+                <text x="100" y="224" text-anchor="middle" fill="#000" font-size="5" font-weight="600" id="req4">0 req</text>
 
                 <text x="330" y="145" text-anchor="start" fill="#4ade80" font-size="5.5" font-style="italic" opacity=".5" id="repLabel">replicating log →</text>
                 <text x="275" y="310" text-anchor="middle" fill="#a78bfa" font-size="7.5" font-weight="600" id="electionTxt" opacity="0"></text>
@@ -440,6 +440,8 @@ var nodeCenters = [
     {x:100, y:200}    /* Node 4: bottom-left */
 ];
 var clientCenter = {x:75, y:60};
+var nodeRadii = [38, 34, 34, 34, 34];
+var clientRadius = 34;
 
 /* Topology animation */
 var animId = null;
@@ -646,11 +648,12 @@ function resetDashboard(){
     ['pA1','pA2','pA3','pA4','pA5'].forEach(function(id){document.getElementById(id).className='pipe-arrow';});
     for(var i=0;i<5;i++){
         document.getElementById('role'+i).textContent=i===0?'LEADER':'Follower';
-        document.getElementById('role'+i).setAttribute('fill',i===0?'#4ade80':'#64748b');
-        document.getElementById('nodeBox'+i).setAttribute('stroke',i===0?'#4ade80':'#1e3050');
+        document.getElementById('role'+i).setAttribute('fill','#000');
+        document.getElementById('nodeBox'+i).setAttribute('stroke',i===0?'#166534':'#166534');
         document.getElementById('nodeBox'+i).setAttribute('stroke-width',i===0?'2.5':'2');
-        document.getElementById('nodeBox'+i).setAttribute('fill',i===0?'url(#gLeader)':'url(#gFollower)');
+        document.getElementById('nodeBox'+i).setAttribute('fill','#4ade80');
         document.getElementById('req'+i).textContent='0 req';
+        document.getElementById('req'+i).setAttribute('fill','#000');
     }
     document.getElementById('topoOps').textContent='0 ops/s';
     document.getElementById('electionTxt').setAttribute('opacity','0');
@@ -697,26 +700,38 @@ function toggleSystem(on){
     }
 }
 
-/* ═══ TOPOLOGY: Dynamic leader-based line routing ═══ */
+/* ═══ TOPOLOGY: Dynamic leader-based line routing (edge-to-edge) ═══ */
 function getLeaderCenter(){ return nodeCenters[currentLeaderId]; }
 function getFollowerIds(){ return [0,1,2,3,4].filter(function(i){return i!==currentLeaderId;}); }
+function edgePoint(cx, cy, r, tx, ty){
+    var dx=tx-cx, dy=ty-cy, len=Math.sqrt(dx*dx+dy*dy);
+    if(len<1) return {x:cx,y:cy};
+    return {x:cx+r*dx/len, y:cy+r*dy/len};
+}
 
 function updateTopoLines(){
     var lc = getLeaderCenter();
+    var lr = nodeRadii[currentLeaderId];
     var followers = getFollowerIds();
-    /* Client line always goes to leader */
-    document.getElementById('lineClient').setAttribute('x1', clientCenter.x + 34);
-    document.getElementById('lineClient').setAttribute('y1', clientCenter.y);
-    document.getElementById('lineClient').setAttribute('x2', lc.x);
-    document.getElementById('lineClient').setAttribute('y2', lc.y);
-    /* Leader to each follower */
+    /* Client line: edge of client circle to edge of leader circle */
+    var cEdge = edgePoint(clientCenter.x, clientCenter.y, clientRadius, lc.x, lc.y);
+    var lEdgeC = edgePoint(lc.x, lc.y, lr, clientCenter.x, clientCenter.y);
+    document.getElementById('lineClient').setAttribute('x1', cEdge.x);
+    document.getElementById('lineClient').setAttribute('y1', cEdge.y);
+    document.getElementById('lineClient').setAttribute('x2', lEdgeC.x);
+    document.getElementById('lineClient').setAttribute('y2', lEdgeC.y);
+    /* Leader to each follower: edge to edge */
     for(var i=0;i<4;i++){
         var fid = followers[i];
+        var fr = nodeRadii[fid];
+        var fc = nodeCenters[fid];
         var line = document.getElementById('lineRep'+(i+1));
-        line.setAttribute('x1', lc.x);
-        line.setAttribute('y1', lc.y);
-        line.setAttribute('x2', nodeCenters[fid].x);
-        line.setAttribute('y2', nodeCenters[fid].y);
+        var lEdge = edgePoint(lc.x, lc.y, lr, fc.x, fc.y);
+        var fEdge = edgePoint(fc.x, fc.y, fr, lc.x, lc.y);
+        line.setAttribute('x1', lEdge.x);
+        line.setAttribute('y1', lEdge.y);
+        line.setAttribute('x2', fEdge.x);
+        line.setAttribute('y2', fEdge.y);
     }
 }
 
@@ -729,21 +744,21 @@ function animateTopology(){
     var lc = getLeaderCenter();
     var followers = getFollowerIds();
 
-    /* Client -> Leader packets */
+    /* Client -> Leader packets (edge-to-edge) */
     var clientSpawn=Math.min(0.5,totalRate/500);
     if(Math.random()<clientSpawn&&clientPkts.length<3) clientPkts.push({t:0});
     var grpC=document.getElementById('pktsClient');
     while(grpC.firstChild) grpC.removeChild(grpC.firstChild);
     var newCP=[];
-    var cTargetX = lc.x, cTargetY = lc.y;
-    var cStartX = clientCenter.x + 34, cStartY = clientCenter.y;
+    var cEdge = edgePoint(clientCenter.x, clientCenter.y, clientRadius, lc.x, lc.y);
+    var lEdgeC = edgePoint(lc.x, lc.y, nodeRadii[currentLeaderId], clientCenter.x, clientCenter.y);
     for(var j=0;j<clientPkts.length;j++){
         clientPkts[j].t+=0.008;
         if(clientPkts[j].t<1){
             newCP.push(clientPkts[j]);
             var t=clientPkts[j].t;
-            var cx=cStartX+(cTargetX-cStartX)*t;
-            var cy=cStartY+(cTargetY-cStartY)*t;
+            var cx=cEdge.x+(lEdgeC.x-cEdge.x)*t;
+            var cy=cEdge.y+(lEdgeC.y-cEdge.y)*t;
             var c=document.createElementNS(svgNs,'circle');
             c.setAttribute('cx',cx);c.setAttribute('cy',cy);c.setAttribute('r',4.5);
             c.setAttribute('fill','#fbbf24');c.setAttribute('opacity',(0.5+0.5*(1-t)).toFixed(2));
@@ -761,7 +776,7 @@ function animateTopology(){
     clientPkts=newCP;
     document.getElementById('lineClient').setAttribute('stroke',clientPkts.length>0?'#fbbf24':'rgba(251,191,36,.2)');
 
-    /* Leader -> Follower replication packets */
+    /* Leader -> Follower replication packets (edge-to-edge) */
     for(var r=0;r<4;r++){
         var grpId='pktsRep'+(r+1);
         var lineId='lineRep'+(r+1);
@@ -769,14 +784,18 @@ function animateTopology(){
         while(grp.firstChild) grp.removeChild(grp.firstChild);
         var fid=followers[r];
         var fc=nodeCenters[fid];
+        var lr = nodeRadii[currentLeaderId];
+        var fr = nodeRadii[fid];
+        var lEdge = edgePoint(lc.x, lc.y, lr, fc.x, fc.y);
+        var fEdge = edgePoint(fc.x, fc.y, fr, lc.x, lc.y);
         var newRP=[];
         for(var j=0;j<repPkts[r].length;j++){
             repPkts[r][j].t+=0.005;
             if(repPkts[r][j].t<1){
                 newRP.push(repPkts[r][j]);
                 var t=repPkts[r][j].t;
-                var px=lc.x+(fc.x-lc.x)*t;
-                var py=lc.y+(fc.y-lc.y)*t;
+                var px=lEdge.x+(fEdge.x-lEdge.x)*t;
+                var py=lEdge.y+(fEdge.y-lEdge.y)*t;
                 var c=document.createElementNS(svgNs,'circle');
                 c.setAttribute('cx',px);c.setAttribute('cy',py);c.setAttribute('r',3.5);
                 c.setAttribute('fill','#4ade80');c.setAttribute('opacity',(0.4+0.5*(1-t)).toFixed(2));
@@ -858,21 +877,21 @@ async function poll(){
             updateTopoLines();
         }
 
-        var roleCols={Leader:'#4ade80',Candidate:'#fbbf24',Follower:'#64748b'};
-        var roleStrokes={Leader:'#4ade80',Candidate:'#fbbf24',Follower:'#1e3050'};
-        var roleSW={Leader:'2.5',Candidate:'2',Follower:'1.5'};
+        var roleCols={Leader:'#000',Candidate:'#000',Follower:'#000'};
+        var roleStrokes={Leader:'#166534',Candidate:'#92400e',Follower:'#166534'};
+        var roleSW={Leader:'2.5',Candidate:'2',Follower:'2'};
         var nodeReqs=d.node_requests||[0,0,0,0,0];
 
         for(var i=0;i<5;i++){
             var nrole=(raftNodes.length>i)?raftNodes[i].role:'Follower';
             document.getElementById('role'+i).textContent=nrole==='Leader'?'LEADER':nrole;
-            document.getElementById('role'+i).setAttribute('fill',roleCols[nrole]||'#64748b');
+            document.getElementById('role'+i).setAttribute('fill','#000');
             document.getElementById('role'+i).setAttribute('font-weight',nrole==='Leader'?'800':'600');
-            document.getElementById('nodeBox'+i).setAttribute('stroke',roleStrokes[nrole]||'#1e3050');
-            document.getElementById('nodeBox'+i).setAttribute('stroke-width',roleSW[nrole]||'1.5');
-            var roleFills={Leader:'url(#gLeader)',Candidate:'url(#gFollower)',Follower:'url(#gFollower)'};
-            document.getElementById('nodeBox'+i).setAttribute('fill',roleFills[nrole]||'url(#gFollower)');
+            document.getElementById('nodeBox'+i).setAttribute('stroke',roleStrokes[nrole]||'#166534');
+            document.getElementById('nodeBox'+i).setAttribute('stroke-width',roleSW[nrole]||'2');
+            document.getElementById('nodeBox'+i).setAttribute('fill','#4ade80');
             document.getElementById('req'+i).textContent=fmtK(nodeReqs[i])+' req';
+            document.getElementById('req'+i).setAttribute('fill','#000');
             nodeReqRates[i]=Math.max(0,nodeReqs[i]-prevNodeReqs[i]);
             prevNodeReqs[i]=nodeReqs[i];
         }

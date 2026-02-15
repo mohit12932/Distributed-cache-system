@@ -414,7 +414,7 @@ int main(int argc, char* argv[]) {
             if (pos != std::string::npos) {
                 rate = std::atoi(body.c_str() + pos + 1);
                 if (rate < 0) rate = 0;
-                if (rate > 50000) rate = 50000;
+                if (rate > 12000) rate = 12000;
             }
         }
         g_traffic_rate = rate;
