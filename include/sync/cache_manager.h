@@ -156,6 +156,7 @@ public:
 
     const Stats& stats() const { return stats_; }
     WriteMode write_mode() const { return config_.write_mode; }
+    std::vector<size_t> segment_sizes() const { return cache_.segment_sizes(); }
 
 private:
     /**

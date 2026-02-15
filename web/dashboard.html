@@ -1,783 +1,1056 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Distributed Cache System &mdash; Dashboard</title>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
-    <style>
-        *{margin:0;padding:0;box-sizing:border-box}
-        body{font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;background:#0a0a14;color:#e0e0e0;min-height:100vh}
-        .c{max-width:1600px;margin:0 auto;padding:16px 20px}
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Distributed Cache System — Live Dashboard</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Segoe UI',Tahoma,sans-serif;background:#0a0c15;color:#d8dee9;min-height:100vh}
+::-webkit-scrollbar{width:5px;height:5px}
+::-webkit-scrollbar-track{background:#111827}
+::-webkit-scrollbar-thumb{background:#334155;border-radius:3px}
+.wrap{max-width:1400px;margin:0 auto;padding:12px 16px}
 
-        /* ── Header ── */
-        header{display:flex;align-items:center;justify-content:space-between;padding:14px 24px;background:linear-gradient(135deg,#12122a 0%,#14203a 100%);border-radius:10px;margin-bottom:14px;border:1px solid #1f3460}
-        header h1{font-size:1.45em;color:#fff}
-        header h1 span{color:#00d4ff}
-        .hdr-right{display:flex;align-items:center;gap:14px}
-        .badge{display:flex;align-items:center;gap:6px;padding:4px 12px;border-radius:16px;font-size:.78em;font-weight:600}
-        .badge.on{background:rgba(76,175,80,.15);color:#4caf50;border:1px solid #4caf50}
-        .badge.off{background:rgba(244,67,54,.15);color:#f44336;border:1px solid #f44336}
-        .toggle-wrap{display:flex;align-items:center;gap:8px}
-        .toggle-lbl{font-size:.82em;font-weight:700;transition:color .3s}
-        .toggle-lbl.active{color:#4caf50}
-        .toggle-lbl.inactive{color:#546e7a}
-        .toggle-sw{position:relative;display:inline-block;width:44px;height:22px}
-        .toggle-sw input{opacity:0;width:0;height:0}
-        .toggle-slider{position:absolute;cursor:pointer;top:0;left:0;right:0;bottom:0;background:#f44336;border-radius:22px;transition:all .3s}
-        .toggle-slider:before{content:'';position:absolute;height:16px;width:16px;left:3px;bottom:3px;background:#fff;border-radius:50%;transition:all .3s}
-        .toggle-sw input:checked+.toggle-slider{background:#4caf50;box-shadow:0 0 12px rgba(76,175,80,.4)}
-        .toggle-sw input:checked+.toggle-slider:before{transform:translateX(22px)}
-        .dot{width:7px;height:7px;border-radius:50%;background:currentColor;animation:pulse 2s infinite}
-        @keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
+/* ═══ HEADER ═══ */
+header{display:flex;align-items:center;justify-content:space-between;padding:8px 16px;
+  background:linear-gradient(135deg,#0e1225,#141e35);border-radius:10px;
+  margin-bottom:10px;border:1px solid #1e3050;flex-wrap:wrap;gap:6px}
+header h1{font-size:1.1em;font-weight:700;letter-spacing:.3px;white-space:nowrap}
+header h1 span{color:#38bdf8}
+.hdr-right{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.badge{display:flex;align-items:center;gap:4px;padding:2px 8px;border-radius:12px;font-size:.62em;font-weight:600}
+.badge.on{background:rgba(56,189,248,.08);color:#38bdf8;border:1px solid rgba(56,189,248,.3)}
+.badge.off{background:rgba(251,113,133,.08);color:#fb7185;border:1px solid rgba(251,113,133,.3)}
+.dot{width:5px;height:5px;border-radius:50%;background:currentColor;animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
 
-        /* ── Status Bar ── */
-        .status-bar{display:flex;gap:0;margin-bottom:14px;border-radius:10px;overflow:hidden;border:1px solid #1f3460}
-        .sb-item{flex:1;padding:10px 14px;background:#12122a;text-align:center;border-right:1px solid #1f3460}
-        .sb-item:last-child{border-right:none}
-        .sb-label{font-size:.65em;color:#546e7a;text-transform:uppercase;letter-spacing:.5px;margin-bottom:2px}
-        .sb-val{font-size:.88em;font-weight:700}
+/* Toggle */
+.tog-wrap{display:flex;align-items:center;gap:4px}
+.tog-label{font-size:.56em;font-weight:600;color:#475569;transition:color .3s;text-transform:uppercase;letter-spacing:.5px}
+.tog-label.on{color:#4ade80}.tog-label.stop{color:#fb7185}
+.tog{position:relative;width:32px;height:16px;display:inline-block}
+.tog input{opacity:0;width:0;height:0}
+.tog-track{position:absolute;cursor:pointer;inset:0;background:#fb7185;border-radius:16px;transition:.3s}
+.tog-track:before{content:'';position:absolute;width:12px;height:12px;left:2px;bottom:2px;background:#fff;border-radius:50%;transition:.3s}
+.tog input:checked+.tog-track{background:#4ade80;box-shadow:0 0 8px rgba(74,222,128,.2)}
+.tog input:checked+.tog-track:before{transform:translateX(16px)}
 
-        /* ── KPI cards ── */
-        .kpi-row{display:grid;grid-template-columns:repeat(6,1fr);gap:12px;margin-bottom:16px}
-        .kpi{background:#12122a;border-radius:10px;padding:16px 10px;text-align:center;border:1px solid #1f3460;transition:border-color .3s}
-        .kpi .v{font-size:2em;font-weight:700;line-height:1.1}
-        .kpi .l{font-size:.72em;color:#546e7a;margin-top:4px}
-        .kpi .sub{font-size:.68em;margin-top:2px}
+/* Slider */
+.slider-wrap{display:flex;align-items:center;gap:4px;background:#111827;border:1px solid #1e3050;border-radius:7px;padding:3px 8px}
+.slider-wrap label{font-size:.54em;color:#94a3b8;font-weight:600;text-transform:uppercase;letter-spacing:.4px;white-space:nowrap}
+.slider-wrap input[type=range]{width:80px;height:3px;-webkit-appearance:none;background:linear-gradient(90deg,#4ade80,#fbbf24,#fb7185);border-radius:2px;outline:none;cursor:pointer}
+.slider-wrap input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:11px;height:11px;border-radius:50%;background:#fff;box-shadow:0 0 4px rgba(0,0,0,.4);cursor:grab}
+.slider-val{font-size:.64em;font-weight:700;color:#38bdf8;min-width:40px;text-align:right}
 
-        /* ── Grid ── */
-        .g2{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px}
+/* ═══ STATUS BAR (Row 1) ═══ */
+.status-bar{display:grid;grid-template-columns:repeat(6,1fr);gap:7px;margin-bottom:10px}
+.stat{text-align:center;background:#111827;border:1px solid #1e3050;border-radius:8px;padding:8px 4px;transition:border-color .3s}
+.stat .sv{font-size:1.3em;font-weight:800;line-height:1.1}
+.stat .sl{font-size:.5em;color:#64748b;margin-top:2px;text-transform:uppercase;letter-spacing:.5px}
+.stat .ss{font-size:.5em;color:#475569;margin-top:1px}
 
-        /* ── Card ── */
-        .card{background:#12122a;border-radius:10px;padding:16px 18px;border:1px solid #1f3460}
-        .card h3{font-size:.92em;color:#8892b0;margin-bottom:10px;display:flex;align-items:center;gap:7px}
-        canvas{max-height:230px}
+/* ═══ SECTION CARDS ═══ */
+.section{background:#111827;border:1px solid #1e3050;border-radius:9px;padding:10px 12px}
+.section h3{font-size:.7em;color:#94a3b8;margin-bottom:6px;display:flex;align-items:center;gap:5px;font-weight:600}
+.section h3 .icon{font-size:1em}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px}
+canvas{max-height:175px}
 
-        /* ── Colors ── */
-        .c-blue{color:#00d4ff}.c-green{color:#4caf50}.c-orange{color:#ff9800}.c-red{color:#f44336}.c-purple{color:#bb86fc}.c-gray{color:#546e7a}
+/* ═══ BURST BAR ═══ */
+.burst-bar{display:flex;align-items:center;gap:8px;margin-bottom:10px;padding:8px 14px;
+  background:linear-gradient(135deg,#1a0e0e,#1e1028);border:1px solid #3b1050;border-radius:9px;flex-wrap:wrap}
+.burst-bar label{font-size:.6em;color:#a78bfa;font-weight:700;text-transform:uppercase;letter-spacing:.5px;white-space:nowrap}
+.burst-bar input[type=text]{background:#0f172a;border:1px solid #334155;color:#d8dee9;border-radius:5px;padding:4px 8px;font-size:.7em;font-family:inherit;width:180px}
+.burst-bar input[type=number]{background:#0f172a;border:1px solid #334155;color:#d8dee9;border-radius:5px;padding:4px 6px;font-size:.7em;font-family:inherit;width:70px}
+.burst-bar input::placeholder{color:#475569}
+.btn{border:none;font-weight:700;padding:5px 14px;border-radius:6px;cursor:pointer;font-size:.66em;letter-spacing:.3px;transition:all .2s;text-transform:uppercase}
+.btn:hover{transform:scale(1.03)}.btn:active{transform:scale(.97)}
+.btn-burst{background:linear-gradient(135deg,#dc2626,#f87171);color:#fff}
+.btn-burst:hover{box-shadow:0 0 12px rgba(248,113,113,.3)}
+.btn-stop{background:linear-gradient(135deg,#334155,#64748b);color:#fff}
+.btn-stop.active{background:linear-gradient(135deg,#fbbf24,#f59e0b);color:#0f172a;box-shadow:0 0 10px rgba(251,191,36,.3)}
+.burst-status{font-size:.6em;margin-left:auto;font-weight:600;display:flex;align-items:center;gap:4px}
+.burst-dot{width:6px;height:6px;border-radius:50%;display:inline-block}
 
-        /* ── Burst bar ── */
-        .burst-bar{display:flex;align-items:center;gap:10px;margin-bottom:14px;padding:10px 18px;background:linear-gradient(135deg,#1a0a2a,#0e1a3a);border-radius:10px;border:1px solid #4a1a7a;flex-wrap:wrap}
-        .burst-bar label{font-size:.78em;color:#8892b0}
-        .burst-bar input[type=text]{width:140px;padding:5px 8px;border:1px solid #4a1a7a;border-radius:5px;background:#0a0a14;color:#e0e0e0;font-size:.82em}
-        .burst-bar input[type=number]{width:52px;padding:5px 6px;border:1px solid #4a1a7a;border-radius:5px;background:#0a0a14;color:#e0e0e0;font-size:.82em;text-align:center}
-        .bbtn{padding:6px 16px;border:none;border-radius:7px;font-weight:700;font-size:.8em;cursor:pointer;transition:all .2s}
-        .bbtn.fire{background:linear-gradient(135deg,#f44336,#ff5722);color:#fff}
-        .bbtn.fire:hover{filter:brightness(1.2);box-shadow:0 0 14px rgba(244,67,54,.5)}
-        .bbtn.stop{background:rgba(76,175,80,.12);color:#4caf50;border:1px solid #4caf50}
-        .bbtn.stop:hover{background:rgba(76,175,80,.25)}
+/* ═══ CONTROL BAR ═══ */
+.ctrl-bar{display:flex;align-items:center;gap:6px;margin-bottom:10px;padding:7px 14px;
+  background:#111827;border:1px solid #1e3050;border-radius:9px;flex-wrap:wrap}
+.ctrl-bar .ctrl-title{font-size:.58em;color:#64748b;font-weight:700;text-transform:uppercase;letter-spacing:.5px;margin-right:4px;white-space:nowrap}
+.btn-ctrl{background:#0f172a;border:1px solid #334155;color:#94a3b8;font-weight:600;padding:4px 10px;
+  border-radius:5px;cursor:pointer;font-size:.6em;transition:all .2s;white-space:nowrap}
+.btn-ctrl:hover{background:#1e293b;border-color:#475569;color:#d8dee9}
+.btn-ctrl.running{border-color:#4ade80;color:#4ade80;background:rgba(74,222,128,.06)}
+.ctrl-status{font-size:.52em;color:#475569;margin-left:2px}
 
+/* ═══ SEGMENT GRID 8x4 ═══ */
+.seg-grid{display:grid;grid-template-columns:repeat(8,1fr);gap:4px}
+.seg-cell{position:relative;border-radius:5px;background:#1e293b;border:1px solid #334155;
+  padding:5px 3px;text-align:center;transition:all .4s;cursor:default;min-height:44px}
+.seg-cell .seg-id{font-weight:700;color:#94a3b8;font-size:.62em;display:block}
+.seg-cell .seg-heat{font-size:.82em;font-weight:800;display:block;margin-top:1px}
+.seg-cell .seg-lock{position:absolute;top:1px;right:3px;font-size:.5em;color:#fbbf24;opacity:0;transition:opacity .3s}
+.seg-cell .seg-lock.show{opacity:1}
+.seg-cell.hot{background:linear-gradient(135deg,#7f1d1d,#dc2626);border-color:#f87171;box-shadow:0 0 8px rgba(248,113,113,.25)}
+.seg-cell.hot .seg-heat{color:#fecaca}
+.seg-cell.warm{background:linear-gradient(135deg,#78350f,#b45309);border-color:#f59e0b;box-shadow:0 0 5px rgba(245,158,11,.15)}
+.seg-cell.warm .seg-heat{color:#fef3c7}
+.seg-cell.cool{background:linear-gradient(135deg,#0c4a6e,#0369a1);border-color:#38bdf8}
+.seg-cell.cool .seg-heat{color:#bae6fd}
+.seg-cell.cold{background:#1e293b;border-color:#334155}
+.seg-cell.cold .seg-heat{color:#64748b}
 
-        /* ── Stroke alert ── */
-        .stroke-alert{display:none;align-items:center;gap:10px;padding:12px 18px;margin-bottom:14px;background:rgba(244,67,54,.1);border:1px solid #f44336;border-radius:10px;animation:blink 1s infinite}
-        .stroke-alert.active{display:flex}
-        .sa-icon{font-size:1.5em}.sa-text{font-size:.88em;color:#ef5350;font-weight:600}.sa-detail{font-size:.75em;color:#ef9a9a}
-        @keyframes blink{0%,100%{opacity:1}50%{opacity:.45}}
+/* ═══ STROKE ALERT ═══ */
+.stroke-alert{display:none;margin-bottom:10px;padding:7px 14px;background:rgba(220,38,38,.12);border:1px solid rgba(248,113,133,.3);
+  border-radius:8px;color:#fca5a5;font-size:.68em;font-weight:600;align-items:center;gap:8px;animation:alertFlash 1.5s infinite}
+.stroke-alert.show{display:flex}
+@keyframes alertFlash{0%,100%{border-color:rgba(248,113,133,.3)}50%{border-color:rgba(248,113,133,.8)}}
 
-        /* ── PINN equation inline ── */
-        .pinn-eq-inline{margin-left:auto;font-family:'Cambria Math','Times New Roman',serif;font-size:.82em;color:#ce93d8;background:rgba(187,134,252,.08);padding:2px 10px;border-radius:5px;border:1px solid rgba(187,134,252,.18);white-space:nowrap}
+/* ═══ TOPOLOGY ═══ */
+.topo-svg{width:100%;height:auto}
+.topo-svg text{font-family:'Segoe UI',sans-serif}
+.raft-metrics{display:grid;grid-template-columns:repeat(3,1fr);gap:4px;margin-top:6px}
+.rm-item{text-align:center;background:#0f172a;border:1px solid #1e3050;border-radius:5px;padding:3px 4px}
+.rm-item .rm-val{font-size:.82em;font-weight:700}
+.rm-item .rm-lbl{font-size:.46em;color:#64748b;text-transform:uppercase;margin-top:1px}
 
-        /* ── Node Topology ── */
-        .topo-svg{width:100%;height:auto}
-        .topo-svg text{font-family:'Segoe UI',sans-serif}
+/* ═══ LSM PIPELINE ═══ */
+.pipeline{display:flex;align-items:center;gap:0;padding:4px 0;overflow-x:auto}
+.pipe-stage{text-align:center;flex:0 0 auto}
+.pipe-box{width:72px;padding:5px 3px;border-radius:6px;border:2px solid #1e3050;background:#0f172a;font-size:.58em;font-weight:600;transition:.3s;position:relative}
+.pipe-box.active{border-color:#4ade80;box-shadow:0 0 6px rgba(74,222,128,.08)}
+.pipe-box.warn{border-color:#fbbf24;box-shadow:0 0 6px rgba(251,191,36,.08)}
+.pipe-box.flush{border-color:#f87171;box-shadow:0 0 10px rgba(248,113,113,.15);animation:flushGlow 1s ease-out}
+@keyframes flushGlow{0%{box-shadow:0 0 18px rgba(248,113,113,.4)}100%{box-shadow:0 0 10px rgba(248,113,113,.15)}}
+.pipe-box .pipe-title{margin-bottom:2px}
+.pipe-box .pipe-val{font-size:1.1em;font-weight:800;margin:1px 0}
+.pipe-box .pipe-sub{font-size:.52em;color:#64748b}
+.pipe-arrow{flex:0 0 16px;text-align:center;font-size:.7em;color:#1e3050;transition:color .3s}
+.pipe-arrow.on{color:#4ade80;animation:arrowPulse 1.2s infinite}
+.pipe-arrow.flush-on{color:#f87171;animation:arrowPulse .6s infinite}
+@keyframes arrowPulse{0%,100%{opacity:.3}50%{opacity:1}}
 
-        /* ── Merged Segment Grid (Heat + Lock) ── */
-        .sg-grid{display:grid;grid-template-columns:repeat(8,1fr);gap:5px}
-        .sg{aspect-ratio:1.5;border-radius:5px;display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:.68em;font-weight:700;transition:all .3s;border:2px solid transparent}
-        .sg .sg-heat{font-size:.95em;margin:1px 0}
-        .sg .sg-lock{font-size:.7em;opacity:.82;margin-top:1px;padding:0 3px;border-radius:2px}
-        .sg-cold{background:#1a3a5c;color:#64b5f6}.sg-warm{background:#2e4a1e;color:#81c784}.sg-hot{background:#5c3a0a;color:#ffb74d}.sg-stroke{background:#5c1a1a;color:#ef5350;animation:blink .6s infinite}
-        .sg-lk-free{border-color:transparent}.sg-lk-shared{border-color:#2196F3}.sg-lk-excl{border-color:#ff9800}.sg-lk-cont{border-color:#f44336;animation:blink .5s infinite}
-        .sg-legend{display:flex;gap:10px;justify-content:center;margin-top:10px;font-size:.7em;color:#546e7a;flex-wrap:wrap}
-        .sg-legend span{display:flex;align-items:center;gap:4px}
-        .sw{width:12px;height:12px;border-radius:3px;display:inline-block}
+/* ═══ PINN CHART ═══ */
+.pinn-row{display:flex;gap:10px;margin-top:6px}
+.pinn-stat{font-size:.5em;color:#64748b;display:flex;align-items:center;gap:3px}
+.pinn-stat strong{color:#a78bfa}
 
-        /* ── WB Pipeline ── */
-        .wb-flow{display:flex;align-items:center;gap:0;padding:12px 6px;overflow-x:auto}
-        .wb-stg{flex:0 0 auto;text-align:center}
-        .wb-box{width:100px;padding:8px 6px;border-radius:7px;border:2px solid #1f3460;background:#0e1a2e;font-size:.73em;font-weight:600;transition:all .3s}
-        .wb-box.a{border-color:#4caf50;box-shadow:0 0 10px rgba(76,175,80,.25)}.wb-box.h{border-color:#ff9800;box-shadow:0 0 10px rgba(255,152,0,.25)}.wb-box.s{border-color:#f44336;box-shadow:0 0 10px rgba(244,67,54,.3);animation:blink .7s infinite}
-        .wb-v{font-size:1.2em;font-weight:700;margin:3px 0}
-        .wb-l{font-size:.65em;color:#546e7a}
-        .wb-arr{flex:0 0 32px;text-align:center;font-size:1em;color:#1f3460}
-        .wb-arr.on{color:#4caf50;animation:ap 1s infinite}
-        @keyframes ap{0%,100%{opacity:.35}50%{opacity:1}}
-        .wb-divider{height:1px;background:linear-gradient(90deg,transparent,#1f3460,transparent);margin:10px 0}
-        .wb-ev-title{font-size:.78em;color:#546e7a;margin-bottom:6px;text-transform:uppercase;letter-spacing:.4px}
+/* ═══ SYSTEM LOG ═══ */
+.sys-log{flex:1;max-height:100px;overflow-y:auto;background:#0a0c15;border:1px solid #1e3050;
+  border-radius:5px;padding:6px 8px;margin-top:8px;font-family:'Cascadia Code','Consolas',monospace;font-size:.54em;line-height:1.7}
+.sys-log div{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 
-        /* ── Event log ── */
-        .evlog{max-height:180px;overflow-y:auto;font-family:'Consolas','Courier New',monospace;font-size:.76em;line-height:1.7}
-        .evlog::-webkit-scrollbar{width:5px}.evlog::-webkit-scrollbar-thumb{background:#1f3460;border-radius:3px}
-        .ev{display:flex;gap:8px;padding:2px 4px;border-radius:4px;border-bottom:1px solid rgba(31,52,96,.3)}
-        .ev:hover{background:rgba(255,255,255,.03)}
-        .ev-t{color:#546e7a;min-width:60px}.ev-s{font-weight:700;min-width:30px}.ev-a{font-weight:600;min-width:65px}.ev-d{color:#8892b0}
-        .ev-pinn .ev-s{color:#bb86fc}.ev-pinn .ev-a{color:#ce93d8}
-        .ev-wb .ev-s{color:#ff9800}.ev-wb .ev-a{color:#4caf50}
-        .ev-lock .ev-s{color:#f44336}.ev-lock .ev-a{color:#ff9800}
-        .ev-req .ev-s{color:#00d4ff}.ev-req .ev-a{color:#4caf50}
+/* ═══ COLORS ═══ */
+.c-sky{color:#38bdf8}.c-green{color:#4ade80}.c-amber{color:#fbbf24}.c-rose{color:#fb7185}
+.c-purple{color:#a78bfa}.c-slate{color:#64748b}.c-emerald{color:#34d399}.c-blue{color:#60a5fa}
 
-        /* ── Responsive ── */
-        @media(max-width:1100px){.kpi-row{grid-template-columns:repeat(3,1fr)}}
-        @media(max-width:700px){.kpi-row{grid-template-columns:repeat(2,1fr)}.g2{grid-template-columns:1fr}}
-    </style>
+/* ═══ RESPONSIVE ═══ */
+@media(max-width:1100px){.row2{grid-template-columns:1fr}.status-bar{grid-template-columns:repeat(3,1fr)}}
+@media(max-width:700px){.status-bar{grid-template-columns:repeat(2,1fr)}.seg-grid{grid-template-columns:repeat(4,1fr)}}
+</style>
 </head>
 <body>
-<div class="c">
+<div class="wrap">
 
-    <!-- ═══ HEADER ═══ -->
-    <header>
-        <h1>Distributed <span>Cache</span> System</h1>
-        <div class="hdr-right">
-            <div class="badge on" id="badge"><div class="dot"></div><span id="badgeTxt">Connected</span></div>
-            <div class="toggle-wrap">
-                <span class="toggle-lbl inactive" id="togOff">OFF</span>
-                <label class="toggle-sw">
-                    <input type="checkbox" id="togInput" checked onchange="toggleSystem(this.checked)">
-                    <span class="toggle-slider"></span>
-                </label>
-                <span class="toggle-lbl active" id="togOn">ON</span>
-            </div>
+<!-- ═══ HEADER ═══ -->
+<header>
+    <h1>⚡ Distributed <span>Cache</span> System</h1>
+    <div class="hdr-right">
+        <div class="badge on" id="badge"><div class="dot"></div><span id="badgeTxt">Connected</span></div>
+        <div class="slider-wrap">
+            <label>Traffic</label>
+            <input type="range" id="speedSlider" min="0" max="1000" value="0" step="10"
+                   oninput="onSliderInput(this.value)" onchange="onSliderChange(this.value)">
+            <div class="slider-val" id="speedVal">0 ops/s</div>
         </div>
-    </header>
-
-    <!-- ═══ STATUS BAR ═══ -->
-    <div class="status-bar">
-        <div class="sb-item"><div class="sb-label">Server</div><div class="sb-val c-green" id="sbServer">ONLINE</div></div>
-        <div class="sb-item"><div class="sb-label">Write Mode</div><div class="sb-val c-blue" id="sbMode">Write-Back</div></div>
-        <div class="sb-item"><div class="sb-label">Segments</div><div class="sb-val c-blue" id="sbSegs">32 Active</div></div>
-        <div class="sb-item"><div class="sb-label">PINN Engine</div><div class="sb-val c-purple" id="sbPinn">Normal</div></div>
-        <div class="sb-item"><div class="sb-label">Lock Health</div><div class="sb-val c-green" id="sbLock">All Free</div></div>
-        <div class="sb-item"><div class="sb-label">WB Queue</div><div class="sb-val c-green" id="sbWB">Idle</div></div>
-    </div>
-
-    <!-- ═══ KPI ROW ═══ -->
-    <div class="kpi-row">
-        <div class="kpi"><div class="v c-blue" id="kTotalOps">0</div><div class="l">Total Operations</div></div>
-        <div class="kpi"><div class="v c-green" id="kOps">0</div><div class="l">Ops / Second</div></div>
-        <div class="kpi">
-            <div class="v c-orange" id="kHitRate">0%</div><div class="l">Cache Hit Rate</div>
-            <div class="sub"><span class="c-green" id="kHits">0</span> hits &middot; <span class="c-red" id="kMiss">0</span> misses</div>
-        </div>
-        <div class="kpi"><div class="v c-purple" id="kKeys">0</div><div class="l">Active Keys</div></div>
-        <div class="kpi"><div class="v c-green" id="kFlushed">0</div><div class="l">WB Flushed to Disk</div></div>
-        <div class="kpi"><div class="v c-red" id="kContentions">0</div><div class="l">Lock Contentions</div></div>
-    </div>
-
-    <!-- ═══ BURST BAR (Multi-Segment) ═══ -->
-    <div class="burst-bar">
-        <span style="color:#bb86fc;font-weight:700;font-size:.88em">PINN Burst</span>
-        <label>Segments</label>
-        <input type="text" id="burstSegs" value="14" placeholder="e.g. 14,15,16">
-        <label>Power</label><input type="number" id="burstPow" value="30" min="1" max="50">
-        <button class="bbtn fire" onclick="fireBurst()">FIRE BURST</button>
-        <button class="bbtn stop" onclick="stopBurst()">STOP</button>
-        <span style="margin-left:auto;font-size:.75em;color:#546e7a" id="burstStatus">Ready</span>
-    </div>
-
-    <div class="stroke-alert" id="strokeAlert">
-        <div class="sa-icon">&#9888;</div>
-        <div><div class="sa-text" id="strokeText">HEAT STROKE DETECTED</div><div class="sa-detail" id="strokeDetail"></div></div>
-    </div>
-
-    <!-- ═══ ROW 1: Traffic + Segment Status ═══ -->
-    <div class="g2">
-        <div class="card">
-            <h3>Traffic Over Time</h3>
-            <canvas id="trafficChart"></canvas>
-        </div>
-        <div class="card">
-            <h3>Segment Status &mdash; Heat &amp; Lock</h3>
-            <div class="sg-grid" id="segGrid"></div>
-            <div class="sg-legend">
-                <span><div class="sw" style="background:#1a3a5c"></div> Cold</span>
-                <span><div class="sw" style="background:#2e4a1e"></div> Warm</span>
-                <span><div class="sw" style="background:#5c3a0a"></div> Hot</span>
-                <span><div class="sw" style="background:#5c1a1a"></div> Stroke</span>
-                <span style="color:#1f3460">|</span>
-                <span><div class="sw" style="border:2px solid transparent;background:#12122a"></div> FREE</span>
-                <span><div class="sw" style="border:2px solid #2196F3;background:#12122a"></div> SHARED</span>
-                <span><div class="sw" style="border:2px solid #ff9800;background:#12122a"></div> EXCL</span>
-                <span><div class="sw" style="border:2px solid #f44336;background:#12122a"></div> CONTEND</span>
-            </div>
+        <div class="tog-wrap">
+            <span class="tog-label" id="lblOff" style="color:#475569">OFF</span>
+            <label class="tog">
+                <input type="checkbox" id="togInput" checked onchange="toggleSystem(this.checked)">
+                <span class="tog-track"></span>
+            </label>
+            <span class="tog-label on" id="lblOn">ON</span>
         </div>
     </div>
+</header>
 
-    <!-- ═══ ROW 2: Node Topology + PINN ═══ -->
-    <div class="g2">
-        <div class="card">
-            <h3>Network Node Topology</h3>
-            <svg viewBox="0 0 500 260" class="topo-svg" xmlns="http://www.w3.org/2000/svg">
-                <!-- Connection lines: Client → each Node -->
-                <line x1="65" y1="55" x2="245" y2="42" stroke="#1f3460" stroke-width="1.5" stroke-dasharray="5,4" id="connLineA"/>
-                <line x1="65" y1="55" x2="425" y2="55" stroke="#1f3460" stroke-width="1.5" stroke-dasharray="5,4" id="connLineB"/>
-                <line x1="65" y1="55" x2="425" y2="195" stroke="#1f3460" stroke-width="1.5" stroke-dasharray="5,4" id="connLineC"/>
-                <line x1="65" y1="55" x2="245" y2="218" stroke="#1f3460" stroke-width="1.5" stroke-dasharray="5,4" id="connLineD"/>
-
-                <!-- Flow labels along each path -->
-                <text x="155" y="38" fill="#546e7a" font-size="8" id="flowLabelA">0 req/s</text>
-                <text x="245" y="46" fill="#546e7a" font-size="8" text-anchor="middle" id="flowLabelB">0 req/s</text>
-                <text x="260" y="138" fill="#546e7a" font-size="8" id="flowLabelC">0 req/s</text>
-                <text x="135" y="150" fill="#546e7a" font-size="8" id="flowLabelD">0 req/s</text>
-
-                <!-- Single animated flow dot (JS-driven, one path at a time) -->
-                <circle r="3.5" fill="#00d4ff" id="flowDot" cx="65" cy="55" opacity="0"/>
-
-                <!-- Client Node (circle, top-left) -->
-                <circle cx="65" cy="55" r="26" fill="#0e1a2e" stroke="#00d4ff" stroke-width="2.5" id="clientCircle"/>
-                <text x="65" y="52" text-anchor="middle" fill="#00d4ff" font-size="9.5" font-weight="700">Client</text>
-                <text x="65" y="65" text-anchor="middle" fill="#546e7a" font-size="7.5" id="topoLB">0 ops/s</text>
-
-                <!-- Node A (S0-S7) — top right -->
-                <rect x="190" y="18" width="110" height="42" rx="7" fill="#0e1a2e" stroke="#1f3460" stroke-width="1.5" id="topoRectA"/>
-                <text x="245" y="36" text-anchor="middle" fill="#64b5f6" font-size="9" font-weight="700">Node A</text>
-                <text x="245" y="52" text-anchor="middle" fill="#546e7a" font-size="7.5" id="topoInfoA">S0-S7 | 0 req</text>
-
-                <!-- Node B (S8-S15) — far right -->
-                <rect x="370" y="34" width="110" height="42" rx="7" fill="#0e1a2e" stroke="#1f3460" stroke-width="1.5" id="topoRectB"/>
-                <text x="425" y="52" text-anchor="middle" fill="#64b5f6" font-size="9" font-weight="700">Node B</text>
-                <text x="425" y="68" text-anchor="middle" fill="#546e7a" font-size="7.5" id="topoInfoB">S8-S15 | 0 req</text>
-
-                <!-- Node C (S16-S23) — bottom right -->
-                <rect x="370" y="174" width="110" height="42" rx="7" fill="#0e1a2e" stroke="#1f3460" stroke-width="1.5" id="topoRectC"/>
-                <text x="425" y="192" text-anchor="middle" fill="#64b5f6" font-size="9" font-weight="700">Node C</text>
-                <text x="425" y="208" text-anchor="middle" fill="#546e7a" font-size="7.5" id="topoInfoC">S16-S23 | 0 req</text>
-
-                <!-- Node D (S24-S31) — bottom center -->
-                <rect x="190" y="197" width="110" height="42" rx="7" fill="#0e1a2e" stroke="#1f3460" stroke-width="1.5" id="topoRectD"/>
-                <text x="245" y="215" text-anchor="middle" fill="#64b5f6" font-size="9" font-weight="700">Node D</text>
-                <text x="245" y="231" text-anchor="middle" fill="#546e7a" font-size="7.5" id="topoInfoD">S24-S31 | 0 req</text>
-            </svg>
-        </div>
-        <div class="card" style="border-color:#4a1a7a">
-            <h3 style="color:#bb86fc">PINN &mdash; Actual vs Predicted Heat <span class="pinn-eq-inline">&part;u/&part;t + u&middot;&part;u/&part;x = &nu;&middot;&part;&sup2;u/&part;x&sup2;</span></h3>
-            <canvas id="pinnChart"></canvas>
-        </div>
-    </div>
-
-    <!-- ═══ ROW 3: WB Pipeline + Events | Request Log ═══ -->
-    <div class="g2">
-        <div class="card" style="border-color:#1a5a3a">
-            <h3 style="color:#4caf50">Write-Back Pipeline</h3>
-            <div class="wb-flow" id="wbPipeline">
-                <div class="wb-stg"><div class="wb-box a" id="wbS1"><div style="color:#81c784">SET ops</div><div class="wb-v" id="wbV1">0</div><div class="wb-l">incoming</div></div></div>
-                <div class="wb-arr on" id="wbA1">&#9654;</div>
-                <div class="wb-stg"><div class="wb-box" id="wbS2"><div style="color:#64b5f6">Cache</div><div class="wb-v" id="wbV2">0%</div><div class="wb-l">dirty</div></div></div>
-                <div class="wb-arr" id="wbA2">&#9654;</div>
-                <div class="wb-stg"><div class="wb-box" id="wbS3"><div style="color:#ffb74d">Queue</div><div class="wb-v" id="wbV3">0</div><div class="wb-l">pending</div></div></div>
-                <div class="wb-arr" id="wbA3">&#9654;</div>
-                <div class="wb-stg"><div class="wb-box" id="wbS4"><div style="color:#ce93d8">Flush</div><div class="wb-v" id="wbV4">0</div><div class="wb-l">entries/s</div></div></div>
-                <div class="wb-arr" id="wbA4">&#9654;</div>
-                <div class="wb-stg"><div class="wb-box a" id="wbS5"><div style="color:#4caf50">Disk</div><div class="wb-v" id="wbV5">OK</div><div class="wb-l">persisted</div></div></div>
-            </div>
-            <div class="wb-divider"></div>
-            <div class="wb-ev-title">System Events (PINN + WB + Lock)</div>
-            <div class="evlog" id="evLog"></div>
-        </div>
-        <div class="card">
-            <h3>Live Request Log</h3>
-            <div class="evlog" id="reqLog" style="max-height:340px"></div>
-        </div>
-    </div>
-
+<!-- ═══ STROKE ALERT ═══ -->
+<div class="stroke-alert" id="strokeAlert">
+    <span>🔥</span>
+    <span id="strokeMsg">HEAT STROKE — Segments overloaded!</span>
 </div>
 
+<!-- ═══ ROW 1: Live Key Metrics (6 cards) ═══ -->
+<div class="status-bar">
+    <div class="stat">
+        <div class="sv c-sky" id="sOps">0</div>
+        <div class="sl">Ops / Second</div>
+        <div class="ss">Total: <span id="sTotalOps">0</span></div>
+    </div>
+    <div class="stat">
+        <div class="sv c-amber" id="sHitRate">0%</div>
+        <div class="sl">Cache Hit Rate</div>
+        <div class="ss"><span class="c-green" id="sHits">0</span> hits · <span class="c-rose" id="sMiss">0</span> miss</div>
+    </div>
+    <div class="stat">
+        <div class="sv c-emerald" id="sKeys">0</div>
+        <div class="sl">Active Keys</div>
+        <div class="ss" id="sMode">write-back</div>
+    </div>
+    <div class="stat">
+        <div class="sv c-rose" id="sFlush">0 / <span id="sStroke">0</span></div>
+        <div class="sl">Flush / Stroke</div>
+        <div class="ss">Recovery events</div>
+    </div>
+    <div class="stat">
+        <div class="sv c-purple" id="sRaftRole">—</div>
+        <div class="sl">Raft Leader</div>
+        <div class="ss">Term: <span id="sRaftTerm">0</span></div>
+    </div>
+    <div class="stat">
+        <div class="sv c-blue" id="sPinnSteps">0</div>
+        <div class="sl">PINN Steps</div>
+        <div class="ss">Loss: <span id="sPinnLoss">—</span></div>
+    </div>
+</div>
+
+<!-- ═══ PINN BURST TRIGGER BAR ═══ -->
+<div class="burst-bar">
+    <label>⚡ PINN Burst</label>
+    <input type="text" id="burstInput" placeholder="Segments: 0,1,2,3" title="Enter shard numbers separated by commas">
+    <label style="font-size:.55em;color:#64748b">Intensity</label>
+    <input type="number" id="burstIntensity" value="500" min="50" max="5000" step="50">
+    <button class="btn btn-burst" onclick="startBurst()">🔥 BURST</button>
+    <button class="btn btn-stop" id="btnStop" onclick="stopBurst()">⏹ STOP</button>
+    <div class="burst-status" id="burstStatus">
+        <span class="burst-dot" id="burstDot" style="background:#475569"></span>
+        <span id="burstStatusTxt">Idle</span>
+    </div>
+</div>
+
+<!-- ═══ CONTROL BAR — Manual Triggers ═══ -->
+<div class="ctrl-bar">
+    <span class="ctrl-title">⚙ Controls</span>
+    <button class="btn-ctrl" id="ctrlTraffic" onclick="ctrlToggleTraffic()">▶ Start Traffic</button>
+    <button class="btn-ctrl" onclick="ctrlFlush()">💾 Flush to Disk</button>
+    <button class="btn-ctrl" onclick="ctrlElection()">🗳 Force Election</button>
+    <button class="btn-ctrl" onclick="ctrlCompact()">🗜 Compact LSM</button>
+    <button class="btn-ctrl" onclick="ctrlReset()">🔄 Reset All</button>
+    <span class="ctrl-status" id="ctrlFeedback"></span>
+</div>
+
+<!-- ═══ ROW 2: Segment Grid + Traffic Chart ═══ -->
+<div class="row2">
+    <!-- Segment Grid 8x4 -->
+    <div class="section">
+        <h3><span class="icon">🔲</span> Segment Grid — 32 Shards Heat Map
+            <span style="margin-left:auto;display:flex;gap:5px;font-size:.78em">
+                <span style="display:flex;align-items:center;gap:2px"><span style="width:7px;height:7px;border-radius:2px;background:linear-gradient(135deg,#7f1d1d,#dc2626)"></span><span style="color:#64748b;font-size:.8em">Hot</span></span>
+                <span style="display:flex;align-items:center;gap:2px"><span style="width:7px;height:7px;border-radius:2px;background:linear-gradient(135deg,#78350f,#b45309)"></span><span style="color:#64748b;font-size:.8em">Warm</span></span>
+                <span style="display:flex;align-items:center;gap:2px"><span style="width:7px;height:7px;border-radius:2px;background:linear-gradient(135deg,#0c4a6e,#0369a1)"></span><span style="color:#64748b;font-size:.8em">Cool</span></span>
+                <span style="display:flex;align-items:center;gap:2px"><span style="width:7px;height:7px;border-radius:2px;background:#1e293b"></span><span style="color:#64748b;font-size:.8em">Idle</span></span>
+            </span>
+        </h3>
+        <div class="seg-grid" id="segGrid"></div>
+    </div>
+
+    <!-- Traffic + PINN Charts -->
+    <div class="section">
+        <h3><span class="icon">📈</span> Traffic Over Time</h3>
+        <canvas id="trafficChart" style="max-height:140px"></canvas>
+        <h3 style="margin-top:8px"><span class="icon">🧠</span> PINN Shard Prediction
+            <span style="margin-left:auto;font-family:'Cambria Math',serif;font-size:.72em;color:#a78bfa;
+            background:rgba(167,139,250,.06);padding:1px 5px;border-radius:3px;border:1px solid rgba(167,139,250,.12)">
+            ∂u/∂t + u·∂u/∂x = ν·∂²u/∂x²</span>
+        </h3>
+        <canvas id="pinnChart" style="max-height:120px"></canvas>
+        <div class="pinn-row">
+            <span class="pinn-stat">Steps: <strong id="pinnSteps2">0</strong></span>
+            <span class="pinn-stat">Loss: <strong id="pinnLoss2">—</strong></span>
+            <span class="pinn-stat">Params: <strong id="pinnParams2">0</strong></span>
+        </div>
+    </div>
+</div>
+
+<!-- ═══ ROW 3: Network Topology + LSM Pipeline ═══ -->
+<div class="row2">
+    <!-- Raft Network Topology (5-node cluster) -->
+    <div class="section" style="border-color:#312e81">
+        <h3><span class="icon">🌐</span> Raft Consensus — 5-Node Cluster</h3>
+        <div class="topo-wrap">
+            <svg viewBox="0 0 550 320" class="topo-svg" xmlns="http://www.w3.org/2000/svg">
+                <defs>
+                    <marker id="arrowG" markerWidth="6" markerHeight="4" refX="5" refY="2" orient="auto">
+                        <path d="M0,0 L6,2 L0,4" fill="#4ade80" opacity=".7"/>
+                    </marker>
+                    <marker id="arrowY" markerWidth="6" markerHeight="4" refX="5" refY="2" orient="auto">
+                        <path d="M0,0 L6,2 L0,4" fill="#fbbf24" opacity=".7"/>
+                    </marker>
+                    <radialGradient id="gClient" cx="50%" cy="40%" r="55%">
+                        <stop offset="0%" stop-color="#fbbf24" stop-opacity=".35"/>
+                        <stop offset="100%" stop-color="#b45309" stop-opacity=".18"/>
+                    </radialGradient>
+                    <radialGradient id="gLeader" cx="50%" cy="40%" r="55%">
+                        <stop offset="0%" stop-color="#4ade80" stop-opacity=".3"/>
+                        <stop offset="100%" stop-color="#166534" stop-opacity=".15"/>
+                    </radialGradient>
+                    <radialGradient id="gFollower" cx="50%" cy="40%" r="55%">
+                        <stop offset="0%" stop-color="#38bdf8" stop-opacity=".2"/>
+                        <stop offset="100%" stop-color="#0c4a6e" stop-opacity=".12"/>
+                    </radialGradient>
+                </defs>
+                <text x="275" y="14" text-anchor="middle" fill="#475569" font-size="7" font-weight="600" id="phaseLabel">IDLE</text>
+
+                <!-- Connection lines (endpoints updated dynamically by JS) -->
+                <line x1="110" y1="70" x2="280" y2="55" stroke="rgba(251,191,36,.2)" stroke-width="1.5" stroke-dasharray="6,4" id="lineClient"/>
+                <line x1="280" y1="55" x2="460" y2="130" stroke="#1e3050" stroke-width="1.2" stroke-dasharray="4,3" id="lineRep1" marker-end="url(#arrowG)"/>
+                <line x1="280" y1="55" x2="400" y2="260" stroke="#1e3050" stroke-width="1.2" stroke-dasharray="4,3" id="lineRep2" marker-end="url(#arrowG)"/>
+                <line x1="280" y1="55" x2="280" y2="280" stroke="#1e3050" stroke-width="1.2" stroke-dasharray="4,3" id="lineRep3" marker-end="url(#arrowG)"/>
+                <line x1="280" y1="55" x2="110" y2="240" stroke="#1e3050" stroke-width="1.2" stroke-dasharray="4,3" id="lineRep4" marker-end="url(#arrowG)"/>
+
+                <!-- Ring connecting follower nodes (decorative) -->
+                <ellipse cx="295" cy="180" rx="180" ry="110" fill="none" stroke="#1e3050" stroke-width="0.8" stroke-dasharray="3,5" opacity=".4"/>
+
+                <!-- Packet animation groups -->
+                <g id="pktsClient"></g><g id="pktsRep1"></g><g id="pktsRep2"></g><g id="pktsRep3"></g><g id="pktsRep4"></g>
+
+                <!-- Client node (top-left — circular with filled background) -->
+                <circle cx="75" cy="60" r="34" fill="url(#gClient)" stroke="#fbbf24" stroke-width="2.5"/>
+                <text x="75" y="52" text-anchor="middle" fill="#fbbf24" font-size="9" font-weight="700">Client</text>
+                <text x="75" y="64" text-anchor="middle" fill="#64748b" font-size="6" id="topoOps">0 ops/s</text>
+                <text x="75" y="74" text-anchor="middle" fill="#475569" font-size="5">SET / GET →</text>
+
+                <!-- Node 0 (upper-right — default leader position) -->
+                <circle cx="430" cy="65" r="38" fill="url(#gLeader)" stroke="#4ade80" stroke-width="2.5" id="nodeBox0"/>
+                <text x="430" y="50" text-anchor="middle" fill="#38bdf8" font-size="8" font-weight="700">Node 0</text>
+                <text x="430" y="62" text-anchor="middle" fill="#4ade80" font-size="7" font-weight="800" id="role0">LEADER</text>
+                <text x="430" y="72" text-anchor="middle" fill="#475569" font-size="5">S0–S6</text>
+                <text x="430" y="84" text-anchor="middle" fill="#4ade80" font-size="5.5" font-weight="600" id="req0">0 req</text>
+
+                <!-- Node 1 (right) -->
+                <circle cx="490" cy="185" r="34" fill="url(#gFollower)" stroke="#1e3050" stroke-width="2" id="nodeBox1"/>
+                <text x="490" y="178" text-anchor="middle" fill="#38bdf8" font-size="8" font-weight="700">Node 1</text>
+                <text x="490" y="189" text-anchor="middle" fill="#64748b" font-size="6.5" font-weight="600" id="role1">Follower</text>
+                <text x="490" y="199" text-anchor="middle" fill="#475569" font-size="5">S7–S12</text>
+                <text x="490" y="209" text-anchor="middle" fill="#38bdf8" font-size="5" font-weight="600" id="req1">0 req</text>
+
+                <!-- Node 2 (lower-right) -->
+                <circle cx="400" cy="275" r="34" fill="url(#gFollower)" stroke="#1e3050" stroke-width="2" id="nodeBox2"/>
+                <text x="400" y="268" text-anchor="middle" fill="#38bdf8" font-size="8" font-weight="700">Node 2</text>
+                <text x="400" y="279" text-anchor="middle" fill="#64748b" font-size="6.5" font-weight="600" id="role2">Follower</text>
+                <text x="400" y="289" text-anchor="middle" fill="#475569" font-size="5">S13–S18</text>
+                <text x="400" y="299" text-anchor="middle" fill="#38bdf8" font-size="5" font-weight="600" id="req2">0 req</text>
+
+                <!-- Node 3 (bottom-center / down) -->
+                <circle cx="210" cy="280" r="34" fill="url(#gFollower)" stroke="#1e3050" stroke-width="2" id="nodeBox3"/>
+                <text x="210" y="273" text-anchor="middle" fill="#38bdf8" font-size="8" font-weight="700">Node 3</text>
+                <text x="210" y="284" text-anchor="middle" fill="#64748b" font-size="6.5" font-weight="600" id="role3">Follower</text>
+                <text x="210" y="294" text-anchor="middle" fill="#475569" font-size="5">S19–S24</text>
+                <text x="210" y="304" text-anchor="middle" fill="#38bdf8" font-size="5" font-weight="600" id="req3">0 req</text>
+
+                <!-- Node 4 (bottom-left) -->
+                <circle cx="100" cy="200" r="34" fill="url(#gFollower)" stroke="#1e3050" stroke-width="2" id="nodeBox4"/>
+                <text x="100" y="193" text-anchor="middle" fill="#38bdf8" font-size="8" font-weight="700">Node 4</text>
+                <text x="100" y="204" text-anchor="middle" fill="#64748b" font-size="6.5" font-weight="600" id="role4">Follower</text>
+                <text x="100" y="214" text-anchor="middle" fill="#475569" font-size="5">S25–S31</text>
+                <text x="100" y="224" text-anchor="middle" fill="#38bdf8" font-size="5" font-weight="600" id="req4">0 req</text>
+
+                <text x="330" y="145" text-anchor="start" fill="#4ade80" font-size="5.5" font-style="italic" opacity=".5" id="repLabel">replicating log →</text>
+                <text x="275" y="310" text-anchor="middle" fill="#a78bfa" font-size="7.5" font-weight="600" id="electionTxt" opacity="0"></text>
+            </svg>
+        </div>
+        <div class="raft-metrics">
+            <div class="rm-item"><div class="rm-val c-green" id="riRole">—</div><div class="rm-lbl">Leader Node</div></div>
+            <div class="rm-item"><div class="rm-val c-sky" id="riTerm">0</div><div class="rm-lbl">Term</div></div>
+            <div class="rm-item"><div class="rm-val c-amber" id="riCommit">0</div><div class="rm-lbl">Committed</div></div>
+            <div class="rm-item"><div class="rm-val c-purple" id="riLog">0</div><div class="rm-lbl">Log Size</div></div>
+            <div class="rm-item"><div class="rm-val c-rose" id="riLeader">—</div><div class="rm-lbl">Leader ID</div></div>
+            <div class="rm-item"><div class="rm-val c-emerald" id="riApplied">0</div><div class="rm-lbl">Applied</div></div>
+        </div>
+    </div>
+
+    <!-- LSM-Tree Pipeline + System Logs -->
+    <div class="section" style="border-color:#064e3b;display:flex;flex-direction:column">
+        <h3><span class="icon">🗄️</span> LSM-Tree Storage Pipeline
+            <span style="margin-left:auto;font-size:.78em;color:#64748b" id="lsmMode">write-back</span>
+        </h3>
+        <div class="pipeline">
+            <div class="pipe-stage">
+                <div class="pipe-box active" id="pWAL"><div class="pipe-title c-green">WAL</div><div class="pipe-val" id="pWALv">0 B</div><div class="pipe-sub">write-ahead</div></div>
+            </div>
+            <div class="pipe-arrow on" id="pA1">&#9654;</div>
+            <div class="pipe-stage">
+                <div class="pipe-box" id="pMem"><div class="pipe-title c-sky">MemTbl</div><div class="pipe-val" id="pMemV">0</div><div class="pipe-sub">entries</div></div>
+            </div>
+            <div class="pipe-arrow" id="pA2">&#9654;</div>
+            <div class="pipe-stage">
+                <div class="pipe-box" id="pSST"><div class="pipe-title c-amber">L0 SST</div><div class="pipe-val" id="pSSTv">0</div><div class="pipe-sub">tables</div></div>
+            </div>
+            <div class="pipe-arrow" id="pA3">&#9654;</div>
+            <div class="pipe-stage">
+                <div class="pipe-box" id="pComp"><div class="pipe-title c-purple">Compact</div><div class="pipe-val" id="pCompV">0</div><div class="pipe-sub">done</div></div>
+            </div>
+            <div class="pipe-arrow" id="pA4">&#9654;</div>
+            <div class="pipe-stage">
+                <div class="pipe-box" id="pBloom"><div class="pipe-title c-emerald">Bloom</div><div class="pipe-val" id="pBloomV">0</div><div class="pipe-sub">filter hits</div></div>
+            </div>
+            <div class="pipe-arrow" id="pA5">&#9654;</div>
+            <div class="pipe-stage">
+                <div class="pipe-box" id="pDB"><div class="pipe-title c-rose">Flush</div><div class="pipe-val" id="pDBv">0</div><div class="pipe-sub">to disk</div></div>
+            </div>
+        </div>
+        <div style="margin-top:8px;display:grid;grid-template-columns:repeat(3,1fr);gap:4px">
+            <div class="rm-item"><div class="rm-val c-green" id="lsmPuts">0</div><div class="rm-lbl">Total Puts</div></div>
+            <div class="rm-item"><div class="rm-val c-sky" id="lsmGets">0</div><div class="rm-lbl">Total Gets</div></div>
+            <div class="rm-item"><div class="rm-val c-rose" id="lsmDels">0</div><div class="rm-lbl">Total Deletes</div></div>
+        </div>
+        <!-- System Logs -->
+        <h3 style="margin-top:10px"><span class="icon">📋</span> System Logs</h3>
+        <div class="sys-log" id="sysLogWrap">
+            <div id="sysLogContent"><div style="color:#475569">[SYSTEM] Waiting for events...</div></div>
+        </div>
+    </div>
+</div>
+
+</div><!-- /wrap -->
+
 <script>
-/* ════════════════════════════════════════════════════════════════
-   CONFIG & STATE
-   ════════════════════════════════════════════════════════════════ */
-const API = 'http://127.0.0.1:8080';
-let prevOps=0, prevHits=0, prevMisses=0;
-let trafficHistory = [];
-const MAX_HIST = 60;
-const S = Array.from({length:32},function(_,i){return 'S'+i});
-
-/* ON/OFF toggle state */
+/* ═══ STATE ═══ */
+var API = window.location.origin || 'http://127.0.0.1:8080';
 var isRunning = true;
-var pollInterval = null;
+var pollTimer = null;
+var prevOps=0, prevHits=0, prevMisses=0, prevFlush=0;
+var prevNodeReqs=[0,0,0,0,0];
+var prevSegLocks = new Array(32).fill(0);
+var trafficHistory=[];
+var MAX_HIST=60;
+var prevRaftLeader=-1;
+var nodeReqRates=[0,0,0,0,0];
+var pendingRate = null;
+var burstActive = false;
+var trafficOn = false;
 
-/* Node topology animation state */
-var topoPathIndex = 0;
-var topoPaths = [
-    {x1:65,y1:55,x2:245,y2:39},
-    {x1:65,y1:55,x2:425,y2:55},
-    {x1:65,y1:55,x2:425,y2:195},
-    {x1:65,y1:55,x2:245,y2:218}
+/* 5-node topology positions (centers — circular layout) */
+var nodeCenters = [
+    {x:430, y:65},    /* Node 0: upper-right (default leader) */
+    {x:490, y:185},   /* Node 1: right */
+    {x:400, y:275},   /* Node 2: lower-right */
+    {x:210, y:280},   /* Node 3: bottom-center */
+    {x:100, y:200}    /* Node 4: bottom-left */
 ];
-var topoNodeIds = ['A','B','C','D'];
-var dotProgress = 0;
-var dotAnimFrame = null;
-var topoNodeHeatLevels = ['cold','cold','cold','cold'];
+var clientCenter = {x:75, y:60};
 
-/* ════════════════════════════════════════════════════════════════
-   CHARTS
-   ════════════════════════════════════════════════════════════════ */
-Chart.defaults.color = '#546e7a';
-Chart.defaults.borderColor = 'rgba(31,52,96,0.5)';
+/* Topology animation */
+var animId = null;
+var clientPkts = [];
+var repPkts = [[],[],[],[]];
+var currentLeaderId = 0;
+
+/* ═══ INIT 8x4 SEGMENT GRID ═══ */
+(function(){
+    var grid = document.getElementById('segGrid');
+    for(var i=0; i<32; i++){
+        var cell = document.createElement('div');
+        cell.className='seg-cell cold';
+        cell.id='seg'+i;
+        cell.innerHTML='<span class="seg-id">S'+i+'</span>'
+            +'<span class="seg-heat">0%</span>'
+            +'<span class="seg-lock" id="lock'+i+'">🔒</span>';
+        grid.appendChild(cell);
+    }
+})();
+
+/* ═══ CHARTS ═══ */
+Chart.defaults.color='#64748b';
+Chart.defaults.borderColor='rgba(30,48,80,0.4)';
 
 var trafficChart = new Chart(document.getElementById('trafficChart'),{
     type:'line',
     data:{labels:[],datasets:[
-        {label:'Ops/s',  data:[],borderColor:'#00d4ff',backgroundColor:'rgba(0,212,255,.06)',tension:.4,fill:true,pointRadius:0},
-        {label:'Hits/s', data:[],borderColor:'#4caf50',backgroundColor:'transparent',tension:.4,borderDash:[4,3],pointRadius:0},
-        {label:'Miss/s', data:[],borderColor:'#f44336',backgroundColor:'transparent',tension:.4,borderDash:[4,3],pointRadius:0}
+        {label:'Ops/s',data:[],borderColor:'#38bdf8',backgroundColor:'rgba(56,189,248,.05)',tension:.4,fill:true,pointRadius:0,borderWidth:2},
+        {label:'Hits/s',data:[],borderColor:'#4ade80',backgroundColor:'transparent',tension:.4,borderDash:[4,3],pointRadius:0,borderWidth:1.5},
+        {label:'Miss/s',data:[],borderColor:'#fb7185',backgroundColor:'transparent',tension:.4,borderDash:[4,3],pointRadius:0,borderWidth:1.5}
     ]},
-    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{boxWidth:10,font:{size:10}}}},scales:{y:{beginAtZero:true}}}
+    options:{responsive:true,maintainAspectRatio:false,
+        plugins:{legend:{labels:{boxWidth:8,font:{size:8}}}},
+        scales:{y:{beginAtZero:true,grid:{color:'rgba(30,48,80,.3)'}},
+                x:{ticks:{font:{size:5},maxRotation:0}}}}
 });
 
 var pinnChart = new Chart(document.getElementById('pinnChart'),{
     type:'bar',
-    data:{labels:S,datasets:[
-        {label:'Actual Heat',   data:new Array(32).fill(0),backgroundColor:'rgba(0,212,255,.45)',borderColor:'#00d4ff',borderWidth:1,borderRadius:2},
-        {label:'Predicted 10s', data:new Array(32).fill(0),backgroundColor:'rgba(244,67,54,.3)', borderColor:'#f44336',borderWidth:1,borderRadius:2}
+    data:{labels:Array.from({length:32},function(_,i){return 'S'+i}),datasets:[
+        {label:'PINN Predicted Heat',data:new Array(32).fill(0),backgroundColor:'rgba(167,139,250,.35)',
+         borderColor:'#a78bfa',borderWidth:1,borderRadius:2}
     ]},
-    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{boxWidth:10,font:{size:10}}}},scales:{y:{beginAtZero:true,max:110,grid:{color:'rgba(31,52,96,.35)'}},x:{ticks:{font:{size:7}}}}}
+    options:{responsive:true,maintainAspectRatio:false,
+        plugins:{legend:{labels:{boxWidth:8,font:{size:8}}}},
+        scales:{y:{beginAtZero:true,max:100,grid:{color:'rgba(30,48,80,.3)'},
+                   ticks:{callback:function(v){return v+'%'}}},
+                x:{ticks:{font:{size:4}}}}}
 });
 
-/* ════════════════════════════════════════════════════════════════
-   INIT MERGED SEGMENT GRID (Heat + Lock)
-   ════════════════════════════════════════════════════════════════ */
-var sgEl = document.getElementById('segGrid');
-var sgHeatClasses = ['sg-cold','sg-warm','sg-hot','sg-stroke'];
-var sgLkClasses   = ['sg-lk-free','sg-lk-shared','sg-lk-excl','sg-lk-cont'];
-var sgLkNames     = ['FREE','SHARED','EXCL','CONTEND'];
-for (var i=0; i<32; i++){
-    var d = document.createElement('div');
-    d.className = 'sg sg-cold sg-lk-free';
-    d.id = 'sg-'+i;
-    d.innerHTML = 'S'+i+'<div class="sg-heat">0%</div><div class="sg-lock">FREE</div>';
-    sgEl.appendChild(d);
+/* ═══ HELPERS ═══ */
+function fmt(n){if(typeof n!=='number')n=Number(n)||0;return n.toLocaleString();}
+function fmtBytes(b){if(b<1024)return b+' B';if(b<1048576)return(b/1024).toFixed(1)+' KB';return(b/1048576).toFixed(1)+' MB';}
+function fmtK(n){if(n>=1e6)return(n/1e6).toFixed(1)+'M';if(n>=1e3)return(n/1e3).toFixed(1)+'K';return n.toString();}
+
+/* ═══ TRAFFIC SLIDER ═══ */
+function onSliderInput(val){
+    val=parseInt(val)||0;
+    document.getElementById('speedVal').textContent=val+' ops/s';
+    pendingRate=val;
 }
-
-/* ════════════════════════════════════════════════════════════════
-   NODE TOPOLOGY HELPERS
-   ════════════════════════════════════════════════════════════════ */
-var nodeColors = {cold:'#1f3460', warm:'#2e7d32', hot:'#e65100', stroke:'#c62828'};
-var flowDotColors = {cold:'#00d4ff', warm:'#4caf50', hot:'#ff9800', stroke:'#f44336'};
-
-function getNodeHeatLevel(maxH){
-    if(maxH>80) return 'stroke';
-    if(maxH>60) return 'hot';
-    if(maxH>25) return 'warm';
-    return 'cold';
+function onSliderChange(val){
+    val=parseInt(val)||0;
+    document.getElementById('speedVal').textContent=val+' ops/s';
+    sendTrafficRate(val);
 }
+function sendTrafficRate(val){
+    pendingRate=null;
+    fetch(API+'/api/traffic',{method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({rate:val})}).catch(function(){});
+    trafficOn = (val > 0);
+    var btn = document.getElementById('ctrlTraffic');
+    if(trafficOn){btn.textContent='⏹ Stop Traffic';btn.className='btn-ctrl running';}
+    else{btn.textContent='▶ Start Traffic';btn.className='btn-ctrl';}
+}
+setInterval(function(){if(pendingRate!==null) sendTrafficRate(pendingRate);},500);
 
-function updateNodeTopo(segReq, segHeat, opsPerSec){
-    var ranges = [{id:'A',start:0,end:7},{id:'B',start:8,end:15},{id:'C',start:16,end:23},{id:'D',start:24,end:31}];
-    for(var n=0; n<ranges.length; n++){
-        var r = ranges[n];
-        var reqSum=0, maxH=0;
-        for(var i=r.start; i<=r.end; i++){
-            reqSum += (segReq[i]||0);
-            if((segHeat[i]||0) > maxH) maxH = segHeat[i]||0;
-        }
-        var level = getNodeHeatLevel(maxH);
-        topoNodeHeatLevels[n] = level;
-        var rect = document.getElementById('topoRect'+r.id);
-        rect.setAttribute('stroke', nodeColors[level]);
-        if(level==='stroke'){rect.setAttribute('stroke-width','2.5')} else {rect.setAttribute('stroke-width','1.5')}
-
-        var info = document.getElementById('topoInfo'+r.id);
-        info.textContent = 'S'+r.start+'-S'+r.end+' | '+reqSum.toLocaleString()+' req';
-
-        // Update flow labels
-        var fl = document.getElementById('flowLabel'+r.id);
-        if(fl){
-            var pct = opsPerSec>0 ? Math.round(reqSum / Math.max(1, segReq.reduce(function(a,b){return a+b},0)) * opsPerSec) : 0;
-            fl.textContent = pct + ' req/s';
-        }
+/* ═══ PERSISTENT BURST ═══ */
+function startBurst(){
+    var input = document.getElementById('burstInput').value.trim();
+    var shards = [];
+    if(input){
+        input.split(',').forEach(function(s){
+            var n=parseInt(s.trim());
+            if(!isNaN(n)&&n>=0&&n<32) shards.push(n);
+        });
     }
-    // Client label
-    document.getElementById('topoLB').textContent = opsPerSec + ' ops/s';
-}
+    if(shards.length===0) shards=[0,1,2,3];
+    var intensity=parseInt(document.getElementById('burstIntensity').value)||500;
 
-/* ════════════════════════════════════════════════════════════════
-   NODE TOPOLOGY ANIMATION — one path at a time
-   ════════════════════════════════════════════════════════════════ */
-function animateFlowDot(){
-    if(!isRunning){
-        var fd=document.getElementById('flowDot');
-        if(fd) fd.setAttribute('opacity','0');
-        return;
-    }
-    var p = topoPaths[topoPathIndex];
-    dotProgress += 0.012;
-    if(dotProgress >= 1){
-        dotProgress = 0;
-        // Dim previous path
-        document.getElementById('connLine'+topoNodeIds[topoPathIndex]).setAttribute('stroke','#1f3460');
-        topoPathIndex = (topoPathIndex + 1) % 4;
-        p = topoPaths[topoPathIndex];
-    }
-    // Highlight active path with heat-appropriate color
-    var lvl = topoNodeHeatLevels[topoPathIndex];
-    var dotCol = flowDotColors[lvl];
-    document.getElementById('connLine'+topoNodeIds[topoPathIndex]).setAttribute('stroke', dotCol);
-    var dot = document.getElementById('flowDot');
-    dot.setAttribute('cx', p.x1 + (p.x2-p.x1)*dotProgress);
-    dot.setAttribute('cy', p.y1 + (p.y2-p.y1)*dotProgress);
-    dot.setAttribute('fill', dotCol);
-    dot.setAttribute('opacity','0.9');
-    dotAnimFrame = requestAnimationFrame(animateFlowDot);
-}
+    document.getElementById('burstStatusTxt').textContent='Starting...';
+    document.getElementById('burstDot').style.background='#fbbf24';
 
-/* ════════════════════════════════════════════════════════════════
-   BURST CONTROLS (MULTI-SEGMENT)
-   ════════════════════════════════════════════════════════════════ */
-async function resetDashboard(){
-    try{
-        await fetch(API+'/burst/stop');
-        await fetch(API+'/reset');
-        // Reset client-side state
-        prevOps=0; prevHits=0; prevMisses=0;
-        trafficHistory = [];
-        trafficChart.data.labels = [];
-        trafficChart.data.datasets[0].data = [];
-        trafficChart.data.datasets[1].data = [];
-        trafficChart.data.datasets[2].data = [];
-        trafficChart.update('none');
-        pinnChart.data.datasets[0].data = new Array(32).fill(0);
-        pinnChart.data.datasets[1].data = new Array(32).fill(0);
-        pinnChart.update('none');
-        unifiedEvents.length = 0;
-        renderEvents();
-        document.getElementById('reqLog').innerHTML = '';
-        document.getElementById('burstStatus').textContent = 'Ready';
-        document.getElementById('burstStatus').style.color = '#546e7a';
-        document.getElementById('strokeAlert').className = 'stroke-alert';
-        prevPinnEvents=0; prevWbEvents=0; prevLockEvents=0;
-        // Reset segment grid visuals
-        for(var i=0;i<32;i++){
-            var el=document.getElementById('sg-'+i);
-            el.className='sg sg-cold sg-lk-free';
-            el.querySelector('.sg-heat').textContent='0%';
-            el.querySelector('.sg-lock').textContent='FREE';
+    fetch(API+'/api/burst',{method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({shards:shards,intensity:intensity})
+    }).then(function(r){return r.json();}).then(function(d){
+        if(d.status==='started'){
+            burstActive=true;
+            document.getElementById('burstStatusTxt').textContent='BURSTING ['+shards.join(',')+'] @ '+intensity;
+            document.getElementById('burstDot').style.background='#f87171';
+            document.getElementById('btnStop').className='btn btn-stop active';
+        } else {
+            document.getElementById('burstStatusTxt').textContent=d.msg||'Already running';
+            document.getElementById('burstDot').style.background='#fbbf24';
         }
-        // Reset node topology
-        var ids=['A','B','C','D'];
-        for(var n=0;n<ids.length;n++){
-            document.getElementById('topoRect'+ids[n]).setAttribute('stroke','#1f3460');
-            document.getElementById('topoInfo'+ids[n]).textContent='S'+(n*8)+'-S'+(n*8+7)+' | 0 req';
-            document.getElementById('flowLabel'+ids[n]).textContent='0 req/s';
-            document.getElementById('connLine'+ids[n]).setAttribute('stroke','#1f3460');
-        }
-        document.getElementById('topoLB').textContent='0 ops/s';
-        document.getElementById('flowDot').setAttribute('opacity','0');
-        topoNodeHeatLevels = ['cold','cold','cold','cold'];
-        topoPathIndex=0; dotProgress=0;
-        // Reset KPIs to zero
-        document.getElementById('kTotalOps').textContent='0';
-        document.getElementById('kOps').textContent='0';
-        document.getElementById('kHitRate').textContent='0%';
-        document.getElementById('kHits').textContent='0';
-        document.getElementById('kMiss').textContent='0';
-        document.getElementById('kKeys').textContent='0';
-        document.getElementById('kFlushed').textContent='0';
-        document.getElementById('kContentions').textContent='0';
-        // Reset WB pipeline
-        document.getElementById('wbV1').textContent='0';
-        document.getElementById('wbV2').textContent='0%';
-        document.getElementById('wbV3').textContent='0';
-        document.getElementById('wbV4').textContent='0';
-        document.getElementById('wbV5').textContent='OK';
-        // Reset status bar
-        document.getElementById('sbPinn').textContent='Normal';document.getElementById('sbPinn').className='sb-val c-purple';
-        document.getElementById('sbLock').textContent='All Free';document.getElementById('sbLock').className='sb-val c-green';
-        document.getElementById('sbWB').textContent='Idle';document.getElementById('sbWB').className='sb-val c-green';
-        document.getElementById('sbSegs').textContent='32 Active';
-    }catch(e){}
+    }).catch(function(){
+        document.getElementById('burstStatusTxt').textContent='Error';
+        document.getElementById('burstDot').style.background='#fb7185';
+    });
 }
-
-/* ════════════════════════════════════════════════════════════════
-   ON/OFF TOGGLE
-   ════════════════════════════════════════════════════════════════ */
-function toggleSystem(on){
-    isRunning = on;
-    if(!on){
-        // Stop polling
-        if(pollInterval){clearInterval(pollInterval);pollInterval=null}
-        // Stop animation
-        if(dotAnimFrame){cancelAnimationFrame(dotAnimFrame);dotAnimFrame=null}
-        // Reset dashboard to zeros
-        resetDashboard();
-        // Update UI
-        document.getElementById('badge').className='badge off';
-        document.getElementById('badgeTxt').textContent='Stopped';
-        document.getElementById('sbServer').textContent='PAUSED';
-        document.getElementById('sbServer').className='sb-val c-orange';
-        document.getElementById('togOn').className='toggle-lbl inactive';
-        document.getElementById('togOff').className='toggle-lbl';
-        document.getElementById('togOff').style.color='#f44336';
-    } else {
-        // Resume
-        document.getElementById('togOn').className='toggle-lbl active';
-        document.getElementById('togOff').className='toggle-lbl inactive';
-        document.getElementById('togOff').style.color='';
-        pollInterval = setInterval(poll, 1000);
-        poll();
-        animateFlowDot();
-    }
-}
-
-async function fireBurst(){
-    var segsStr = document.getElementById('burstSegs').value;
-    var pow = document.getElementById('burstPow').value;
-    var segs = segsStr.split(',').map(function(s){return s.trim()}).filter(function(s){return s!=='' && !isNaN(s)});
-    if(segs.length===0) return;
-    try{
-        await fetch(API+'/burst?seg='+segs.join(',')+('&intensity=')+pow);
-        document.getElementById('burstStatus').textContent = 'Burst on '+segs.map(function(s){return 'S'+s}).join(', ');
-        document.getElementById('burstStatus').style.color = '#f44336';
-    }catch(e){}
-}
-
-async function stopBurst(){
-    try{await fetch(API+'/burst/stop');
-        document.getElementById('burstStatus').textContent='Ready';
-        document.getElementById('burstStatus').style.color='#546e7a';
-    }catch(e){}
-}
-
-/* ════════════════════════════════════════════════════════════════
-   UNIFIED EVENT LOG
-   ════════════════════════════════════════════════════════════════ */
-var unifiedEvents = [];
-function pushEvent(type, seg, action, detail){
-    var t = new Date().toLocaleTimeString('en-US',{hour12:false});
-    unifiedEvents.unshift({type:type,time:t,seg:seg,action:action,detail:detail});
-    if(unifiedEvents.length > 60) unifiedEvents.length = 60;
-}
-function renderEvents(){
-    var el = document.getElementById('evLog');
-    el.innerHTML = '';
-    unifiedEvents.slice(0,30).forEach(function(e){
-        var d = document.createElement('div');
-        d.className = 'ev ev-' + e.type;
-        d.innerHTML = '<span class="ev-t">'+e.time+'</span><span class="ev-s">S'+e.seg+'</span><span class="ev-a">'+e.action+'</span><span class="ev-d">'+e.detail+'</span>';
-        el.appendChild(d);
+function stopBurst(){
+    fetch(API+'/api/burst-stop',{method:'POST',
+        headers:{'Content-Type':'application/json'},body:'{}'
+    }).then(function(r){return r.json();}).then(function(d){
+        burstActive=false;
+        var msg='Stopped ('+fmtK(d.total_ops||0)+' ops, '+d.hot_detected+' hot)';
+        if(d.hot_detected>=3) msg+=' — HEAT STROKE!';
+        document.getElementById('burstStatusTxt').textContent=msg;
+        document.getElementById('burstDot').style.background='#475569';
+        document.getElementById('btnStop').className='btn btn-stop';
+    }).catch(function(){
+        document.getElementById('burstStatusTxt').textContent='Error stopping';
     });
 }
 
-/* ════════════════════════════════════════════════════════════════
-   REQUEST LOG
-   ════════════════════════════════════════════════════════════════ */
-function addReqLog(cmd, key, lat, isHit){
-    var el = document.getElementById('reqLog');
-    var t = new Date().toLocaleTimeString('en-US',{hour12:false});
-    var hitTxt = isHit===true?' HIT':isHit===false?' MISS':'';
-    var hitCl  = isHit===true?'c-green':isHit===false?'c-orange':'';
-    var d = document.createElement('div');
-    d.className='ev ev-req';
-    d.innerHTML='<span class="ev-t">'+t+'</span><span class="ev-s" style="color:'+(cmd==='SET'?'#4caf50':cmd==='DEL'?'#f44336':'#00d4ff')+'">'+cmd+'</span><span class="ev-a">'+key+'</span>'+(hitTxt?'<span class="'+hitCl+'" style="font-size:.85em">'+hitTxt+'</span>':'')+'<span class="ev-d" style="margin-left:auto">'+lat.toFixed(1)+'ms</span>';
-    el.prepend(d);
-    while(el.children.length>50) el.removeChild(el.lastChild);
+/* ═══ CONTROL BAR HANDLERS ═══ */
+function showFeedback(msg,color){
+    var el=document.getElementById('ctrlFeedback');
+    el.textContent=msg;el.style.color=color||'#4ade80';
+    setTimeout(function(){el.textContent='';},3000);
+}
+function ctrlToggleTraffic(){
+    if(trafficOn){
+        document.getElementById('speedSlider').value=0;
+        sendTrafficRate(0);
+        showFeedback('Traffic stopped','#fb7185');
+    } else {
+        var rate=5000;
+        document.getElementById('speedSlider').value=rate;
+        document.getElementById('speedVal').textContent=rate+' ops/s';
+        sendTrafficRate(rate);
+        showFeedback('Traffic started at '+rate+' ops/s','#4ade80');
+    }
+}
+function ctrlFlush(){
+    fetch(API+'/api/flush',{method:'POST',headers:{'Content-Type':'application/json'},body:'{}'})
+        .then(function(r){return r.json();}).then(function(d){
+            showFeedback('Flushed to disk (count: '+d.flush_count+')','#34d399');
+        }).catch(function(){showFeedback('Flush failed','#fb7185');});
+}
+function ctrlElection(){
+    fetch(API+'/api/election',{method:'POST',headers:{'Content-Type':'application/json'},body:'{}'})
+        .then(function(r){return r.json();}).then(function(d){
+            showFeedback('Election: term '+d.old_term+' -> '+d.new_term+' (Leader: Node '+(d.leader_id>=0?d.leader_id:'?')+')','#a78bfa');
+        }).catch(function(){showFeedback('Election failed','#fb7185');});
+}
+function ctrlCompact(){
+    fetch(API+'/api/compact',{method:'POST',headers:{'Content-Type':'application/json'},body:'{}'})
+        .then(function(r){return r.json();}).then(function(d){
+            showFeedback('Compacted ('+d.compactions+' done, '+d.sstable_count+' SSTs)','#fbbf24');
+        }).catch(function(){showFeedback('Compact failed','#fb7185');});
 }
 
-/* ════════════════════════════════════════════════════════════════
-   MAIN POLL
-   ════════════════════════════════════════════════════════════════ */
-var prevPinnEvents=0, prevWbEvents=0, prevLockEvents=0;
+/* ═══ RESET ═══ */
+function ctrlReset(){
+    try{fetch(API+'/api/reset');}catch(e){}
+    resetDashboard();
+    showFeedback('Dashboard reset','#38bdf8');
+}
+function resetDashboard(){
+    prevOps=0;prevHits=0;prevMisses=0;prevFlush=0;
+    prevNodeReqs=[0,0,0,0,0];nodeReqRates=[0,0,0,0,0];
+    prevSegLocks=new Array(32).fill(0);
+    trafficHistory=[];
+    prevRaftLeader=-1;currentLeaderId=0;
+    document.getElementById('sOps').textContent='0';
+    document.getElementById('sTotalOps').textContent='0';
+    document.getElementById('sHitRate').textContent='0%';
+    document.getElementById('sHitRate').style.color='#fbbf24';
+    document.getElementById('sHits').textContent='0';
+    document.getElementById('sMiss').textContent='0';
+    document.getElementById('sKeys').textContent='0';
+    document.getElementById('sFlush').innerHTML='0 / <span id="sStroke">0</span>';
+    document.getElementById('sRaftRole').textContent='—';
+    document.getElementById('sRaftTerm').textContent='0';
+    document.getElementById('sPinnSteps').textContent='0';
+    document.getElementById('sPinnLoss').textContent='—';
+    document.getElementById('strokeAlert').className='stroke-alert';
+    trafficChart.data.labels=[];
+    trafficChart.data.datasets.forEach(function(ds){ds.data=[];});
+    trafficChart.update('none');
+    pinnChart.data.datasets[0].data=new Array(32).fill(0);
+    pinnChart.data.datasets[0].backgroundColor=new Array(32).fill('rgba(167,139,250,.35)');
+    pinnChart.update('none');
+    for(var i=0;i<32;i++){
+        document.getElementById('seg'+i).className='seg-cell cold';
+        document.getElementById('seg'+i).querySelector('.seg-heat').textContent='0%';
+        document.getElementById('lock'+i).className='seg-lock';
+    }
+    ['pWAL','pMem','pSST','pComp','pBloom','pDB'].forEach(function(id){document.getElementById(id).className='pipe-box';});
+    ['pA1','pA2','pA3','pA4','pA5'].forEach(function(id){document.getElementById(id).className='pipe-arrow';});
+    for(var i=0;i<5;i++){
+        document.getElementById('role'+i).textContent=i===0?'LEADER':'Follower';
+        document.getElementById('role'+i).setAttribute('fill',i===0?'#4ade80':'#64748b');
+        document.getElementById('nodeBox'+i).setAttribute('stroke',i===0?'#4ade80':'#1e3050');
+        document.getElementById('nodeBox'+i).setAttribute('stroke-width',i===0?'2.5':'2');
+        document.getElementById('nodeBox'+i).setAttribute('fill',i===0?'url(#gLeader)':'url(#gFollower)');
+        document.getElementById('req'+i).textContent='0 req';
+    }
+    document.getElementById('topoOps').textContent='0 ops/s';
+    document.getElementById('electionTxt').setAttribute('opacity','0');
+    clientPkts=[];repPkts=[[],[],[],[]];
+    updateTopoLines();
+    document.getElementById('riRole').textContent='—';document.getElementById('riTerm').textContent='0';
+    document.getElementById('riCommit').textContent='0';document.getElementById('riApplied').textContent='0';
+    document.getElementById('riLog').textContent='0';document.getElementById('riLeader').textContent='—';
+    document.getElementById('speedSlider').value=0;document.getElementById('speedVal').textContent='0 ops/s';
+    document.getElementById('burstStatusTxt').textContent='Idle';
+    document.getElementById('burstDot').style.background='#475569';
+    document.getElementById('btnStop').className='btn btn-stop';
+    burstActive=false;trafficOn=false;
+    document.getElementById('ctrlTraffic').textContent='▶ Start Traffic';
+    document.getElementById('ctrlTraffic').className='btn-ctrl';
+    document.getElementById('lsmPuts').textContent='0';
+    document.getElementById('lsmGets').textContent='0';
+    document.getElementById('lsmDels').textContent='0';
+    document.getElementById('sysLogContent').innerHTML='<div style="color:#475569">[SYSTEM] Dashboard reset</div>';
+}
 
+/* ═══ ON/OFF TOGGLE ═══ */
+function toggleSystem(on){
+    isRunning=on;
+    if(!on){
+        if(pollTimer){clearInterval(pollTimer);pollTimer=null;}
+        if(animId){cancelAnimationFrame(animId);animId=null;}
+        sendTrafficRate(0);
+        if(burstActive) stopBurst();
+        resetDashboard();
+        document.getElementById('badge').className='badge off';
+        document.getElementById('badgeTxt').textContent='Stopped';
+        document.getElementById('lblOn').className='tog-label';
+        document.getElementById('lblOn').style.color='#475569';
+        document.getElementById('lblOff').className='tog-label stop';
+    } else {
+        document.getElementById('lblOn').className='tog-label on';
+        document.getElementById('lblOn').style.color='';
+        document.getElementById('lblOff').className='tog-label';
+        document.getElementById('lblOff').style.color='#475569';
+        pollTimer=setInterval(poll,1000);
+        poll();
+        animateTopology();
+    }
+}
+
+/* ═══ TOPOLOGY: Dynamic leader-based line routing ═══ */
+function getLeaderCenter(){ return nodeCenters[currentLeaderId]; }
+function getFollowerIds(){ return [0,1,2,3,4].filter(function(i){return i!==currentLeaderId;}); }
+
+function updateTopoLines(){
+    var lc = getLeaderCenter();
+    var followers = getFollowerIds();
+    /* Client line always goes to leader */
+    document.getElementById('lineClient').setAttribute('x1', clientCenter.x + 34);
+    document.getElementById('lineClient').setAttribute('y1', clientCenter.y);
+    document.getElementById('lineClient').setAttribute('x2', lc.x);
+    document.getElementById('lineClient').setAttribute('y2', lc.y);
+    /* Leader to each follower */
+    for(var i=0;i<4;i++){
+        var fid = followers[i];
+        var line = document.getElementById('lineRep'+(i+1));
+        line.setAttribute('x1', lc.x);
+        line.setAttribute('y1', lc.y);
+        line.setAttribute('x2', nodeCenters[fid].x);
+        line.setAttribute('y2', nodeCenters[fid].y);
+    }
+}
+
+/* ═══ TOPOLOGY ANIMATION (5-node) ═══ */
+function animateTopology(){
+    if(!isRunning){clearAllPkts();return;}
+    var svgNs='http://www.w3.org/2000/svg';
+    var totalRate=0;
+    for(var i=0;i<5;i++) totalRate+=nodeReqRates[i];
+    var lc = getLeaderCenter();
+    var followers = getFollowerIds();
+
+    /* Client -> Leader packets */
+    var clientSpawn=Math.min(0.5,totalRate/500);
+    if(Math.random()<clientSpawn&&clientPkts.length<3) clientPkts.push({t:0});
+    var grpC=document.getElementById('pktsClient');
+    while(grpC.firstChild) grpC.removeChild(grpC.firstChild);
+    var newCP=[];
+    var cTargetX = lc.x, cTargetY = lc.y;
+    var cStartX = clientCenter.x + 34, cStartY = clientCenter.y;
+    for(var j=0;j<clientPkts.length;j++){
+        clientPkts[j].t+=0.008;
+        if(clientPkts[j].t<1){
+            newCP.push(clientPkts[j]);
+            var t=clientPkts[j].t;
+            var cx=cStartX+(cTargetX-cStartX)*t;
+            var cy=cStartY+(cTargetY-cStartY)*t;
+            var c=document.createElementNS(svgNs,'circle');
+            c.setAttribute('cx',cx);c.setAttribute('cy',cy);c.setAttribute('r',4.5);
+            c.setAttribute('fill','#fbbf24');c.setAttribute('opacity',(0.5+0.5*(1-t)).toFixed(2));
+            grpC.appendChild(c);
+            var txt=document.createElementNS(svgNs,'text');
+            txt.setAttribute('x',cx);txt.setAttribute('y',Number(cy)+2);
+            txt.setAttribute('text-anchor','middle');txt.setAttribute('fill','#0f172a');
+            txt.setAttribute('font-size','4.5');txt.setAttribute('font-weight','800');
+            txt.textContent='W';
+            grpC.appendChild(txt);
+        } else {
+            for(var r=0;r<4;r++) if(repPkts[r].length<2) repPkts[r].push({t:0});
+        }
+    }
+    clientPkts=newCP;
+    document.getElementById('lineClient').setAttribute('stroke',clientPkts.length>0?'#fbbf24':'rgba(251,191,36,.2)');
+
+    /* Leader -> Follower replication packets */
+    for(var r=0;r<4;r++){
+        var grpId='pktsRep'+(r+1);
+        var lineId='lineRep'+(r+1);
+        var grp=document.getElementById(grpId);
+        while(grp.firstChild) grp.removeChild(grp.firstChild);
+        var fid=followers[r];
+        var fc=nodeCenters[fid];
+        var newRP=[];
+        for(var j=0;j<repPkts[r].length;j++){
+            repPkts[r][j].t+=0.005;
+            if(repPkts[r][j].t<1){
+                newRP.push(repPkts[r][j]);
+                var t=repPkts[r][j].t;
+                var px=lc.x+(fc.x-lc.x)*t;
+                var py=lc.y+(fc.y-lc.y)*t;
+                var c=document.createElementNS(svgNs,'circle');
+                c.setAttribute('cx',px);c.setAttribute('cy',py);c.setAttribute('r',3.5);
+                c.setAttribute('fill','#4ade80');c.setAttribute('opacity',(0.4+0.5*(1-t)).toFixed(2));
+                grp.appendChild(c);
+                var txt=document.createElementNS(svgNs,'text');
+                txt.setAttribute('x',px);txt.setAttribute('y',Number(py)+1.5);
+                txt.setAttribute('text-anchor','middle');txt.setAttribute('fill','#0f172a');
+                txt.setAttribute('font-size','3.5');txt.setAttribute('font-weight','800');
+                txt.textContent='R';
+                grp.appendChild(txt);
+            }
+        }
+        repPkts[r]=newRP;
+        document.getElementById(lineId).setAttribute('stroke',repPkts[r].length>0?'#4ade80':'#1e3050');
+    }
+    animId=requestAnimationFrame(animateTopology);
+}
+function clearAllPkts(){
+    clientPkts=[];repPkts=[[],[],[],[]];
+    ['pktsClient','pktsRep1','pktsRep2','pktsRep3','pktsRep4'].forEach(function(id){
+        var g=document.getElementById(id);while(g&&g.firstChild) g.removeChild(g.firstChild);
+    });
+    document.getElementById('lineClient').setAttribute('stroke','rgba(251,191,36,.2)');
+    ['lineRep1','lineRep2','lineRep3','lineRep4'].forEach(function(id){
+        document.getElementById(id).setAttribute('stroke','#1e3050');
+    });
+}
+
+/* ═══ MAIN POLL ═══ */
 async function poll(){
     if(!isRunning) return;
     try{
-        var r = await fetch(API+'/metrics');
-        var d = await r.json();
-
-        // ── Connection badge ──
+        var r=await fetch(API+'/metrics');
+        var d=await r.json();
         document.getElementById('badge').className='badge on';
         document.getElementById('badgeTxt').textContent='Connected';
 
-        // ── KPIs ──
-        var ops = d.total_ops||0;
-        var dOps = Math.max(0, ops-prevOps); prevOps=ops;
-        var hits = d.cache_hits||0, misses=d.cache_misses||0;
-        var total = hits+misses;
-        var hitRate = total>0 ? (100*hits/total) : 0;
-        var dHits = Math.max(0,hits-prevHits), dMiss = Math.max(0,misses-prevMisses);
-        prevHits=hits; prevMisses=misses;
+        /* KPIs */
+        var hits=d.cache_hits||0, misses=d.cache_misses||0;
+        var ops=hits+misses;
+        var dOps=Math.max(0,ops-prevOps);prevOps=ops;
+        var dHits=Math.max(0,hits-prevHits);prevHits=hits;
+        var dMiss=Math.max(0,misses-prevMisses);prevMisses=misses;
+        var hitRate=ops>0?(100*hits/ops):0;
 
-        document.getElementById('kTotalOps').textContent = ops.toLocaleString();
-        document.getElementById('kOps').textContent = dOps.toLocaleString();
-        document.getElementById('kHitRate').textContent = hitRate.toFixed(1)+'%';
-        document.getElementById('kHitRate').style.color = hitRate>80?'#4caf50':hitRate>50?'#ff9800':'#f44336';
-        document.getElementById('kHits').textContent = hits.toLocaleString();
-        document.getElementById('kMiss').textContent = misses.toLocaleString();
-        document.getElementById('kKeys').textContent = (d.current_keys||0).toLocaleString();
+        document.getElementById('sOps').textContent=fmt(dOps);
+        document.getElementById('sTotalOps').textContent=fmtK(ops);
+        document.getElementById('sHitRate').textContent=hitRate.toFixed(1)+'%';
+        document.getElementById('sHitRate').style.color=hitRate>80?'#4ade80':hitRate>50?'#fbbf24':'#fb7185';
+        document.getElementById('sHits').textContent=fmtK(hits);
+        document.getElementById('sMiss').textContent=fmtK(misses);
+        document.getElementById('sKeys').textContent=fmt(d.cache_size||0);
+        document.getElementById('sMode').textContent=d.write_mode||'—';
 
-        // ── Traffic chart ──
-        var tl = new Date().toLocaleTimeString('en-US',{hour12:false});
-        trafficHistory.push({t:tl,o:dOps,h:dHits,m:dMiss});
+        var flushCount=d.flush_count||0;
+        var strokeCount=d.heatstroke_count||0;
+        document.getElementById('sFlush').innerHTML=fmt(flushCount)+' / <span id="sStroke">'+fmt(strokeCount)+'</span>';
+
+        /* ═══ RAFT — 5-node cluster state ═══ */
+        var raft=d.raft||{};
+        var raftNodes=raft.nodes||[];
+        var leaderId=raft.leader_id!=null?raft.leader_id:-1;
+        var leaderTerm=raft.term||0;
+
+        /* Find actual leader from nodes array */
+        if(raftNodes.length===5){
+            for(var i=0;i<5;i++){
+                if(raftNodes[i].role==='Leader'){
+                    leaderId=i;
+                    leaderTerm=raftNodes[i].term;
+                    break;
+                }
+            }
+        }
+
+        /* Update topology lines when leader changes */
+        if(leaderId>=0 && leaderId!==currentLeaderId){
+            currentLeaderId=leaderId;
+            updateTopoLines();
+        }
+
+        var roleCols={Leader:'#4ade80',Candidate:'#fbbf24',Follower:'#64748b'};
+        var roleStrokes={Leader:'#4ade80',Candidate:'#fbbf24',Follower:'#1e3050'};
+        var roleSW={Leader:'2.5',Candidate:'2',Follower:'1.5'};
+        var nodeReqs=d.node_requests||[0,0,0,0,0];
+
+        for(var i=0;i<5;i++){
+            var nrole=(raftNodes.length>i)?raftNodes[i].role:'Follower';
+            document.getElementById('role'+i).textContent=nrole==='Leader'?'LEADER':nrole;
+            document.getElementById('role'+i).setAttribute('fill',roleCols[nrole]||'#64748b');
+            document.getElementById('role'+i).setAttribute('font-weight',nrole==='Leader'?'800':'600');
+            document.getElementById('nodeBox'+i).setAttribute('stroke',roleStrokes[nrole]||'#1e3050');
+            document.getElementById('nodeBox'+i).setAttribute('stroke-width',roleSW[nrole]||'1.5');
+            var roleFills={Leader:'url(#gLeader)',Candidate:'url(#gFollower)',Follower:'url(#gFollower)'};
+            document.getElementById('nodeBox'+i).setAttribute('fill',roleFills[nrole]||'url(#gFollower)');
+            document.getElementById('req'+i).textContent=fmtK(nodeReqs[i])+' req';
+            nodeReqRates[i]=Math.max(0,nodeReqs[i]-prevNodeReqs[i]);
+            prevNodeReqs[i]=nodeReqs[i];
+        }
+        document.getElementById('topoOps').textContent=fmtK(dOps)+' ops/s';
+
+        /* Raft header card */
+        var leaderLabel=leaderId>=0?'Node '+leaderId:'—';
+        document.getElementById('sRaftRole').textContent=leaderLabel;
+        document.getElementById('sRaftRole').style.color=leaderId>=0?'#4ade80':'#fbbf24';
+        document.getElementById('sRaftTerm').textContent=fmt(leaderTerm);
+
+        /* Phase label */
+        var isRecovering=flushCount>prevFlush;
+        var phaseEl=document.getElementById('phaseLabel');
+        var anyCandidate=raftNodes.some(function(n){return n.role==='Candidate';});
+        if(isRecovering){phaseEl.textContent='BURST RECOVERY — FLUSHING';phaseEl.setAttribute('fill','#fb7185');}
+        else if(anyCandidate){phaseEl.textContent='ELECTION IN PROGRESS';phaseEl.setAttribute('fill','#fbbf24');}
+        else if(dOps>0){phaseEl.textContent='NORMAL OPERATION — REPLICATING';phaseEl.setAttribute('fill','#475569');}
+        else{phaseEl.textContent='IDLE';phaseEl.setAttribute('fill','#475569');}
+
+        var repLbl=document.getElementById('repLabel');
+        repLbl.textContent=leaderId>=0?'replicating log \u2192':'awaiting leader...';
+        repLbl.setAttribute('fill',leaderId>=0?'#4ade80':'#475569');
+
+        /* Election transition animation */
+        if(leaderId!==prevRaftLeader&&prevRaftLeader!==-1){
+            var etxt=document.getElementById('electionTxt');
+            etxt.textContent='\u26A1 Leader: Node '+prevRaftLeader+' \u2192 Node '+leaderId+' (term '+leaderTerm+')';
+            etxt.setAttribute('opacity','1');
+            etxt.setAttribute('fill','#4ade80');
+            setTimeout(function(){etxt.setAttribute('opacity','0');},5000);
+        }
+        prevRaftLeader=leaderId;
+
+        /* Raft metrics panel — use leader node data for accurate metrics */
+        var leaderData = (raftNodes.length===5 && leaderId>=0) ? raftNodes[leaderId] : raft;
+        document.getElementById('riRole').textContent=leaderLabel;
+        document.getElementById('riRole').style.color=leaderId>=0?'#4ade80':'#fbbf24';
+        document.getElementById('riTerm').textContent=fmt(leaderTerm);
+        document.getElementById('riCommit').textContent=fmt(leaderData.commit_index||0);
+        document.getElementById('riLog').textContent=fmt(leaderData.log_size||0);
+        document.getElementById('riLeader').textContent=leaderId>=0?'Node '+leaderId:'—';
+        document.getElementById('riApplied').textContent=fmt(leaderData.last_applied||0);
+
+        /* Stroke alert */
+        prevFlush=flushCount;
+        var alertEl=document.getElementById('strokeAlert');
+        if(strokeCount>0&&isRecovering){
+            alertEl.className='stroke-alert show';
+            document.getElementById('strokeMsg').textContent='\uD83D\uDD25 HEAT STROKE — '+strokeCount+' strokes! PINN triggered emergency flush.';
+        } else if(isRecovering){
+            alertEl.className='stroke-alert show';
+            document.getElementById('strokeMsg').textContent='\u267B\uFE0F RECOVERY — Flushing dirty data after burst detection...';
+        } else {
+            alertEl.className='stroke-alert';
+        }
+
+        /* Burst status sync */
+        if(d.burst_active!==undefined){
+            burstActive=d.burst_active;
+            if(burstActive){
+                document.getElementById('burstDot').style.background='#f87171';
+                document.getElementById('btnStop').className='btn btn-stop active';
+                var opsDone=d.burst_ops_done||0;
+                document.getElementById('burstStatusTxt').textContent='BURSTING... '+fmtK(opsDone)+' ops';
+            }
+        }
+
+        /* PINN */
+        var pinn=d.pinn||{};
+        document.getElementById('sPinnSteps').textContent=fmt(pinn.training_steps||0);
+        document.getElementById('sPinnLoss').textContent=(pinn.total_loss||0).toFixed(5);
+
+        /* Traffic Chart */
+        var ts=new Date().toLocaleTimeString('en-US',{hour12:false});
+        trafficHistory.push({t:ts,o:dOps,h:dHits,m:dMiss});
         if(trafficHistory.length>MAX_HIST) trafficHistory.shift();
-        trafficChart.data.labels = trafficHistory.map(function(x){return x.t});
-        trafficChart.data.datasets[0].data = trafficHistory.map(function(x){return x.o});
-        trafficChart.data.datasets[1].data = trafficHistory.map(function(x){return x.h});
-        trafficChart.data.datasets[2].data = trafficHistory.map(function(x){return x.m});
+        trafficChart.data.labels=trafficHistory.map(function(x){return x.t;});
+        trafficChart.data.datasets[0].data=trafficHistory.map(function(x){return x.o;});
+        trafficChart.data.datasets[1].data=trafficHistory.map(function(x){return x.h;});
+        trafficChart.data.datasets[2].data=trafficHistory.map(function(x){return x.m;});
         trafficChart.update('none');
 
-        // ── Segment data ──
-        var segHeat = d.segment_heat || new Array(32).fill(0);
-        var segReq  = d.segment_requests || new Array(32).fill(0);
+        /* PINN Chart — per-shard differentiated predictions from backend */
+        var preds=pinn.predictions||new Array(32).fill(0);
+        pinnChart.data.datasets[0].data=preds.map(function(p){return Math.min(100,Math.max(0,p*100));});
+        pinnChart.data.datasets[0].backgroundColor=preds.map(function(p){
+            var v=p*100;
+            if(v>70) return 'rgba(251,113,133,.55)';
+            if(v>40) return 'rgba(251,191,36,.45)';
+            return 'rgba(167,139,250,.35)';
+        });
+        pinnChart.update('none');
+        document.getElementById('pinnSteps2').textContent=fmt(pinn.training_steps||0);
+        document.getElementById('pinnLoss2').textContent=(pinn.total_loss||0).toFixed(5);
+        document.getElementById('pinnParams2').textContent=fmtK(pinn.num_parameters||0);
 
-        // ── PINN ──
-        var pinn = d.pinn;
-        var strokeSegs = (pinn && pinn.stroke_segments) || [];
+        /* ═══ Segment Grid — lock only on ACTIVELY locked segments ═══ */
+        var segLocks=d.segment_locks||new Array(32).fill(0);
+        var segDeltas=[];
+        var totalDelta=0;
+        for(var i=0;i<32;i++){
+            var delta=Math.max(0,segLocks[i]-prevSegLocks[i]);
+            segDeltas.push(delta);
+            totalDelta+=delta;
+        }
+        prevSegLocks=segLocks.slice();
+        var avgDelta=totalDelta>0?totalDelta/32:1;
 
-        // ── Locks ──
-        var locks = d.locks;
-        var ls = locks ? (locks.state || new Array(32).fill(0)) : new Array(32).fill(0);
-        var lw = locks ? (locks.wait_ms || new Array(32).fill(0)) : new Array(32).fill(0);
-        var lc = locks ? (locks.contentions || new Array(32).fill(0)) : new Array(32).fill(0);
-        var totalCont=0, contSegs=0;
-
-        // ── Merged Segment Grid (Heat + Lock) ──
-        for(var i=0; i<32; i++){
-            var el = document.getElementById('sg-'+i);
-            var h = segHeat[i];
-            var isStroke = strokeSegs.indexOf(i) !== -1;
-            var heatCl = isStroke ? 'sg-stroke' : (h>80?'sg-stroke':h>60?'sg-hot':h>25?'sg-warm':'sg-cold');
-            var lockCl = sgLkClasses[ls[i]] || 'sg-lk-free';
-            el.className = 'sg ' + heatCl + ' ' + lockCl;
-            el.querySelector('.sg-heat').textContent = Math.round(h)+'%';
-            var lockLabel = lw[i] > 0.5 ? lw[i].toFixed(1)+'ms' : sgLkNames[ls[i]];
-            el.querySelector('.sg-lock').textContent = lockLabel;
-            totalCont += lc[i];
-            if(ls[i]===3) contSegs++;
+        for(var i=0;i<32;i++){
+            var ratio=segDeltas[i]/avgDelta;
+            var heat=Math.min(100,ratio*40);
+            var cell=document.getElementById('seg'+i);
+            var cls='seg-cell ';
+            if(heat>70) cls+='hot';
+            else if(heat>40) cls+='warm';
+            else if(segDeltas[i]>0) cls+='cool';
+            else cls+='cold';
+            cell.className=cls;
+            cell.querySelector('.seg-heat').textContent=Math.round(heat)+'%';
+            /* Lock icon ONLY appears on segments with activity this poll interval */
+            document.getElementById('lock'+i).className='seg-lock'+(segDeltas[i]>0?' show':'');
         }
 
-        document.getElementById('kContentions').textContent = totalCont.toLocaleString();
+        /* LSM Pipeline */
+        var lsm=d.lsm||{};
+        var walB=lsm.wal_bytes||0,memE=lsm.memtable_entries||0,memS=lsm.memtable_size||0;
+        var l0=(lsm.levels||[])[0]||0,comp=lsm.compactions||0,bloom=lsm.bloom_hits||0;
+        document.getElementById('pWALv').textContent=fmtBytes(walB);
+        document.getElementById('pMemV').textContent=fmt(memE);
+        document.getElementById('pSSTv').textContent=fmt(l0);
+        document.getElementById('pCompV').textContent=fmt(comp);
+        document.getElementById('pBloomV').textContent=fmt(bloom);
+        document.getElementById('pDBv').textContent=fmt(flushCount);
+        document.getElementById('lsmMode').textContent=d.write_mode||'write-back';
+        document.getElementById('lsmPuts').textContent=fmtK(lsm.total_puts||0);
+        document.getElementById('lsmGets').textContent=fmtK(lsm.total_gets||0);
+        document.getElementById('lsmDels').textContent=fmtK(lsm.total_deletes||0);
 
-        // ── Node Topology ──
-        updateNodeTopo(segReq, segHeat, dOps);
+        document.getElementById('pWAL').className='pipe-box'+(walB>0?' active':'')+(isRecovering?' flush':'');
+        document.getElementById('pMem').className='pipe-box'+(memS>3145728?' warn':memE>0?' active':'')+(isRecovering?' flush':'');
+        document.getElementById('pSST').className='pipe-box'+(l0>3?' warn':l0>0?' active':'');
+        document.getElementById('pComp').className='pipe-box'+(comp>0?' active':'');
+        document.getElementById('pBloom').className='pipe-box'+(bloom>0?' active':'');
+        document.getElementById('pDB').className='pipe-box'+(flushCount>0?' active':'')+(isRecovering?' flush':'');
+        document.getElementById('pA1').className='pipe-arrow'+(walB>0?(isRecovering?' flush-on':' on'):'');
+        document.getElementById('pA2').className='pipe-arrow'+(memE>0?(isRecovering?' flush-on':' on'):'');
+        document.getElementById('pA3').className='pipe-arrow'+(l0>0?' on':'');
+        document.getElementById('pA4').className='pipe-arrow'+(comp>0?' on':'');
+        document.getElementById('pA5').className='pipe-arrow'+(flushCount>0?(isRecovering?' flush-on':' on'):'');
 
-        // ── PINN chart ──
-        if(pinn){
-            var actual = pinn.u || segHeat;
-            var predicted = pinn.predicted || new Array(32).fill(0);
-            pinnChart.data.datasets[0].data = actual;
-            pinnChart.data.datasets[1].data = predicted;
-            pinnChart.data.datasets[1].backgroundColor = predicted.map(function(p){return p>(pinn.threshold||75)?'rgba(244,67,54,.65)':'rgba(244,67,54,.2)'});
-            pinnChart.update('none');
-
-            // Stroke alert
-            var alertEl = document.getElementById('strokeAlert');
-            if(strokeSegs.length>0){
-                alertEl.className='stroke-alert active';
-                document.getElementById('strokeText').textContent='HEAT STROKE: '+strokeSegs.map(function(s){return 'S'+s}).join(', ');
-                var maxP = Math.max.apply(null,strokeSegs.map(function(s){return predicted[s]||0}));
-                document.getElementById('strokeDetail').textContent='Predicted '+maxP.toFixed(1)+'% > '+(pinn.threshold||75)+'% threshold | Burgers residual anomaly | WB emergency flush + Lock contention';
-            } else { alertEl.className='stroke-alert' }
-
-            // Status bar: PINN
-            var sbP = document.getElementById('sbPinn');
-            if(strokeSegs.length>0){sbP.textContent='STROKE ('+strokeSegs.length+')';sbP.className='sb-val c-red'}
-            else{sbP.textContent='Normal';sbP.className='sb-val c-purple'}
-
-            // PINN events -> unified log
-            var pinnEvts = pinn.events || [];
-            if(pinnEvts.length > prevPinnEvents){
-                for(var pe=prevPinnEvents; pe<pinnEvts.length; pe++){
-                    var ev = pinnEvts[pe];
-                    pushEvent('pinn', ev.segment, ev.action, ev.detail);
-                }
-                prevPinnEvents = pinnEvts.length;
+        /* ═══ System Logs — backend events displayed below LSM pipeline ═══ */
+        var events=d.events||[];
+        if(events.length>0){
+            var logColors={'info':'#38bdf8','warn':'#fbbf24','error':'#fb7185','raft':'#a78bfa',
+                           'lsm':'#34d399','pinn':'#c084fc','burst':'#f87171'};
+            var logHtml='';
+            for(var i=0;i<events.length;i++){
+                var ev=events[i];
+                var col=logColors[ev.type]||'#64748b';
+                logHtml+='<div style="color:'+col+'">['+ev.type.toUpperCase()+'] '+ev.msg+'</div>';
             }
-        }
-
-        // ── Write-Back ──
-        var wb = d.writeback;
-        if(wb){
-            var qd = wb.queue_depth || new Array(32).fill(0);
-            var fr = wb.flush_rate || new Array(32).fill(0);
-            var dr = wb.dirty_ratio || new Array(32).fill(0);
-            document.getElementById('kFlushed').textContent = (wb.total_flushed||0).toLocaleString();
-
-            // Pipeline vis — focus on hottest segment
-            var tSeg = strokeSegs.length>0 ? strokeSegs[0] : 14;
-            var tQ=qd[tSeg]||0, tF=fr[tSeg]||0, tD=dr[tSeg]||0, tH=segHeat[tSeg]||0;
-            document.getElementById('wbV1').textContent = Math.round(tH*0.15);
-            document.getElementById('wbV2').textContent = Math.round(tD)+'%';
-            document.getElementById('wbV3').textContent = Math.round(tQ);
-            document.getElementById('wbV4').textContent = tF.toFixed(1);
-            document.getElementById('wbV5').textContent = tF>10?'BUSY':'OK';
-            document.getElementById('wbV5').style.color = tF>10?'#ff9800':'#4caf50';
-            document.getElementById('wbS3').className='wb-box'+(tQ>100?' s':tQ>30?' h':tQ>5?' a':'');
-            document.getElementById('wbS4').className='wb-box'+(tF>10?' s':tF>5?' h':' a');
-            document.getElementById('wbS5').className='wb-box'+(tF>10?' h':' a');
-            document.getElementById('wbA1').className='wb-arr'+(tH>5?' on':'');
-            document.getElementById('wbA2').className='wb-arr'+(tD>5?' on':'');
-            document.getElementById('wbA3').className='wb-arr'+(tQ>3?' on':'');
-            document.getElementById('wbA4').className='wb-arr'+(tF>0.5?' on':'');
-
-            // Status bar: WB
-            var maxQ = Math.max.apply(null,qd);
-            var sbW = document.getElementById('sbWB');
-            if(maxQ>100){sbW.textContent='OVERFLOW';sbW.className='sb-val c-red'}
-            else if(maxQ>30){sbW.textContent='Busy ('+Math.round(maxQ)+')';sbW.className='sb-val c-orange'}
-            else if(maxQ>5){sbW.textContent='Draining';sbW.className='sb-val c-blue'}
-            else{sbW.textContent='Idle';sbW.className='sb-val c-green'}
-
-            // WB events -> unified log
-            var wbEvts = wb.events || [];
-            if(wbEvts.length > prevWbEvents){
-                for(var we=prevWbEvents; we<wbEvts.length; we++){
-                    var ev = wbEvts[we];
-                    pushEvent('wb', ev.seg, ev.type, 'queue='+ev.queue+' flush='+ev.rate+'/s');
-                }
-                prevWbEvents = wbEvts.length;
-            }
-        }
-
-        // ── Status bar: Locks ──
-        var sbL = document.getElementById('sbLock');
-        if(contSegs>0){sbL.textContent='CONTENDED ('+contSegs+')';sbL.className='sb-val c-red'}
-        else{
-            var exclSegs=0;for(var i=0;i<32;i++){if(ls[i]===2)exclSegs++}
-            if(exclSegs>0){sbL.textContent='Excl ('+exclSegs+')';sbL.className='sb-val c-orange'}
-            else{sbL.textContent='All Free';sbL.className='sb-val c-green'}
-        }
-
-        // Lock events -> unified log
-        if(locks){
-            var lockEvts = locks.events || [];
-            if(lockEvts.length > prevLockEvents){
-                for(var le=prevLockEvents; le<lockEvts.length; le++){
-                    var ev = lockEvts[le];
-                    pushEvent('lock', ev.seg, ev.state, ev.detail);
-                }
-                prevLockEvents = lockEvts.length;
-            }
-        }
-
-        // ── Status bar extras ──
-        var activeSegs=0;for(var i=0;i<32;i++){if(segHeat[i]>1)activeSegs++}
-        document.getElementById('sbSegs').textContent = '32 ('+activeSegs+' hot)';
-        document.getElementById('sbMode').textContent = (d.write_back||0)>0?'Write-Back':'Write-Through';
-        document.getElementById('sbServer').textContent='ONLINE';document.getElementById('sbServer').className='sb-val c-green';
-
-        // ── Render unified events ──
-        renderEvents();
-
-        // ── Request log entries ──
-        var cmds=['SET','GET','GET','GET'];
-        for(var i=0;i<Math.min(dOps,4);i++){
-            var cmd=cmds[Math.floor(Math.random()*cmds.length)];
-            var key='key:'+Math.floor(Math.random()*1000);
-            var lat=0.3+Math.random()*3.5;
-            var isHit=cmd==='GET'?Math.random()<(hitRate/100):null;
-            addReqLog(cmd,key,lat,isHit);
+            document.getElementById('sysLogContent').innerHTML=logHtml;
+            var logWrap=document.getElementById('sysLogWrap');
+            logWrap.scrollTop=logWrap.scrollHeight;
         }
 
     }catch(e){
         document.getElementById('badge').className='badge off';
         document.getElementById('badgeTxt').textContent='Disconnected';
-        document.getElementById('sbServer').textContent='OFFLINE';
-        document.getElementById('sbServer').className='sb-val c-red';
     }
 }
 
-pollInterval = setInterval(poll, 1000);
+/* ═══ START ═══ */
+pollTimer=setInterval(poll,1000);
 poll();
-animateFlowDot();
+updateTopoLines();
+animateTopology();
 </script>
 </body>
 </html>

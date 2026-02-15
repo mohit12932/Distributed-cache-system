@@ -82,6 +82,16 @@ public:
         return total;
     }
 
+    /** Return per-segment entry counts (for dashboard heat map). */
+    std::vector<size_t> segment_sizes() const {
+        std::vector<size_t> sizes(N_SEGMENTS);
+        for (size_t i = 0; i < N_SEGMENTS; ++i) {
+            compat::LockGuard<compat::Mutex> lock(segments_[i].mutex);
+            sizes[i] = segments_[i].cache->size();
+        }
+        return sizes;
+    }
+
     /** Return all keys (acquires lock on each segment). */
     std::vector<std::string> keys() const {
         std::vector<std::string> all;

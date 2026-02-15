@@ -162,6 +162,15 @@ private:
     HANDLE handle_;
 };
 
+// ── sleep_for helper (replaces std::this_thread::sleep_for) ────────
+namespace this_thread {
+    template<class Rep, class Period>
+    inline void sleep_for(const std::chrono::duration<Rep, Period>& dur) {
+        auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(dur).count();
+        Sleep(static_cast<DWORD>(ms > 0 ? ms : 1));
+    }
+}  // namespace this_thread
+
 // ── Atomic (all via CRITICAL_SECTION for 32-bit safety) ────────────
 template<typename T>
 class Atomic {
@@ -242,6 +251,13 @@ using Thread = std::thread;
 
 template<class T>
 using Atomic = std::atomic<T>;
+
+namespace this_thread {
+    template<class Rep, class Period>
+    inline void sleep_for(const std::chrono::duration<Rep, Period>& dur) {
+        std::this_thread::sleep_for(dur);
+    }
+}  // namespace this_thread
 
 }  // namespace compat
 }  // namespace dcs

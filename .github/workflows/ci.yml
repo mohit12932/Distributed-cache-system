@@ -22,10 +22,10 @@ jobs:
     - name: Build project
       run: |
         mkdir -p build
-        g++ -std=c++17 -O2 -Wall -Wextra -I. -o build/distributed_cache src/main.cpp -pthread
-        g++ -std=c++17 -O2 -Wall -Wextra -I. -o build/test_lru_cache src/tests/test_lru_cache.cpp -pthread
-        g++ -std=c++17 -O2 -Wall -Wextra -I. -o build/test_concurrency src/tests/test_concurrency.cpp -pthread
-        g++ -std=c++17 -O2 -Wall -Wextra -I. -o build/test_resp_parser src/tests/test_resp_parser.cpp -pthread
+        g++ -std=c++17 -O2 -Wall -Wextra -Wno-unused-variable -I. -o build/distributed_cache src/main.cpp -pthread
+        g++ -std=c++17 -O2 -I. -o build/test_lru_cache src/tests/test_lru_cache.cpp -pthread
+        g++ -std=c++17 -O2 -I. -o build/test_concurrency src/tests/test_concurrency.cpp -pthread
+        g++ -std=c++17 -O2 -I. -o build/test_resp_parser src/tests/test_resp_parser.cpp -pthread
         
     - name: Run LRU Cache Tests
       run: ./build/test_lru_cache
@@ -43,17 +43,17 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
       
-    - name: Setup MSVC
-      uses: microsoft/setup-msbuild@v2
+    - name: Setup MSVC Developer Environment
+      uses: ilammy/msvc-dev-cmd@v1
       
     - name: Build with MSVC
       shell: cmd
       run: |
         mkdir build
-        cl /std:c++17 /EHsc /O2 /I. /Fe:build\distributed_cache.exe src\main.cpp ws2_32.lib
-        cl /std:c++17 /EHsc /O2 /I. /Fe:build\test_lru_cache.exe src\tests\test_lru_cache.cpp ws2_32.lib
-        cl /std:c++17 /EHsc /O2 /I. /Fe:build\test_concurrency.exe src\tests\test_concurrency.cpp ws2_32.lib
-        cl /std:c++17 /EHsc /O2 /I. /Fe:build\test_resp_parser.exe src\tests\test_resp_parser.cpp ws2_32.lib
+        cl /std:c++17 /EHsc /O2 /W3 /I. /Fe:build\distributed_cache.exe src\main.cpp ws2_32.lib
+        cl /std:c++17 /EHsc /O2 /W3 /I. /Fe:build\test_lru_cache.exe src\tests\test_lru_cache.cpp ws2_32.lib
+        cl /std:c++17 /EHsc /O2 /W3 /I. /Fe:build\test_concurrency.exe src\tests\test_concurrency.cpp ws2_32.lib
+        cl /std:c++17 /EHsc /O2 /W3 /I. /Fe:build\test_resp_parser.exe src\tests\test_resp_parser.cpp ws2_32.lib
         
     - name: Run Tests
       shell: cmd
@@ -70,6 +70,11 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
       
+    - name: Create data directories
+      run: |
+        mkdir -p data/lsm/sst/L0 data/lsm/sst/L1 data/lsm/sst/L2 data/lsm/sst/L3
+        mkdir -p data/lsm/wal data/raft
+        
     - name: Build
       run: |
         mkdir -p build
