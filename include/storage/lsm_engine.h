@@ -393,7 +393,10 @@ private:
 #else
         // Simple cleanup with system call
         std::string cmd = "rm -f " + data_dir_ + "/wal/rotating_*.wal";
-        (void)system(cmd.c_str());
+    int rc = system(cmd.c_str());
+    if (rc != 0) {
+        std::cerr << "[LSM] WAL cleanup command failed with code " << rc << "\n";
+    }
 #endif
     }
 

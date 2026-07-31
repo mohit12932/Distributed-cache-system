@@ -82,8 +82,11 @@ jobs:
         g++ -std=c++17 -O2 -I. -o build/test_live_server tests/test_live_server.cpp -pthread
         
     - name: Start server and run integration tests
+      env:
+        TCP_PORT: 6399
+        HTTP_PORT: 8080
       run: |
+        trap 'pkill -f distributed_cache || true' EXIT
         ./build/distributed_cache --port 6399 --mode write-through &
         sleep 3
-        ./build/test_live_server || echo "Integration tests completed"
-        pkill -f distributed_cache || true
+        ./build/test_live_server
