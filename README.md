@@ -166,7 +166,7 @@ The frontend can be deployed as a static site from this repository. The dashboar
 Example:
 
 ```text
-https://your-vercel-app.vercel.app/?backend=https://your-render-service.onrender.com
+https://your-vercel-app.vercel.app/?backend=https://distributed-cache-system-mfd7.onrender.com
 ```
 
 ### Render backend
