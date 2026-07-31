@@ -114,9 +114,19 @@ public:
     // Truncate log from index onwards (inclusive)
     void TruncateFrom(uint64_t index) {
         compat::LockGuard<compat::Mutex> lock(mu_);
-        if (index == 0 || index > entries_.size()) return;
-        entries_.resize(index - 1);
-        RewriteLog();
+        if (index == 0 || entries_.empty()) return;
+        // Remove all entries with log index >= the given index.
+        // After compaction, entries may not start at index 1,
+        // so we cannot use index as an array position.
+        size_t keep = 0;
+        for (size_t i = 0; i < entries_.size(); i++) {
+            if (entries_[i].index < index) keep = i + 1;
+            else break;  // entries are sorted by index
+        }
+        if (keep < entries_.size()) {
+            entries_.resize(keep);
+            RewriteLog();
+        }
     }
 
     // Compact log: remove entries before compact_index (keep from compact_index onward)

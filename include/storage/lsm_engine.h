@@ -84,15 +84,15 @@ public:
 
     persistence::LoadResult load(const std::string& key) override {
         stats_.total_gets++;
-        // 1. Check active memtable
-        auto result = memtable_->Get(key);
-        if (result.found) {
-            if (result.deleted) return persistence::LoadResult::Miss();
-            return persistence::LoadResult::Hit(result.value);
-        }
-        // 2. Check immutable memtable
+        // 1 & 2. Check active + immutable memtable under same lock
+        //        (protects against memtable_ being moved by MaybeScheduleFlush)
         {
             compat::LockGuard<compat::Mutex> lock(imm_mu_);
+            auto result = memtable_->Get(key);
+            if (result.found) {
+                if (result.deleted) return persistence::LoadResult::Miss();
+                return persistence::LoadResult::Hit(result.value);
+            }
             if (imm_memtable_) {
                 auto imm_result = imm_memtable_->Get(key);
                 if (imm_result.found) {
@@ -120,11 +120,14 @@ public:
         uint64_t seq = sequence_++;
         WALRecord rec{WALRecordType::kPut, key, value, seq};
         wal_->Append(rec);
-        memtable_->Put(key, value, seq);
-        stats_.memtable_size.store(memtable_->ApproximateSize());
-        stats_.memtable_entries.store(memtable_->EntryCount());
-        stats_.wal_bytes.store(wal_->BytesWritten());
-        MaybeScheduleFlush();
+        {
+            compat::LockGuard<compat::Mutex> lock(imm_mu_);
+            memtable_->Put(key, value, seq);
+            stats_.memtable_size.store(memtable_->ApproximateSize());
+            stats_.memtable_entries.store(memtable_->EntryCount());
+            stats_.wal_bytes.store(wal_->BytesWritten());
+            MaybeScheduleFlush();
+        }
         return true;
     }
 
@@ -133,8 +136,11 @@ public:
         uint64_t seq = sequence_++;
         WALRecord rec{WALRecordType::kDelete, key, "", seq};
         wal_->Append(rec);
-        memtable_->Delete(key, seq);
-        MaybeScheduleFlush();
+        {
+            compat::LockGuard<compat::Mutex> lock(imm_mu_);
+            memtable_->Delete(key, seq);
+            MaybeScheduleFlush();
+        }
         return true;
     }
 
@@ -146,14 +152,17 @@ public:
             wal_batch.push_back({WALRecordType::kPut, e.first, e.second, seq});
         }
         wal_->AppendBatch(wal_batch);
-        for (size_t i = 0; i < entries.size(); i++) {
-            memtable_->Put(entries[i].first, entries[i].second, wal_batch[i].sequence);
+        {
+            compat::LockGuard<compat::Mutex> lock(imm_mu_);
+            for (size_t i = 0; i < entries.size(); i++) {
+                memtable_->Put(entries[i].first, entries[i].second, wal_batch[i].sequence);
+            }
+            stats_.memtable_size.store(memtable_->ApproximateSize());
+            stats_.memtable_entries.store(memtable_->EntryCount());
+            stats_.wal_bytes.store(wal_->BytesWritten());
+            MaybeScheduleFlush();
         }
         stats_.total_puts.fetch_add(static_cast<uint64_t>(entries.size()));
-        stats_.memtable_size.store(memtable_->ApproximateSize());
-        stats_.memtable_entries.store(memtable_->EntryCount());
-        stats_.wal_bytes.store(wal_->BytesWritten());
-        MaybeScheduleFlush();
         return true;
     }
 
@@ -191,21 +200,19 @@ public:
     }
 
 private:
+    // Caller MUST hold imm_mu_ (protects memtable_ pointer against concurrent access)
     void MaybeScheduleFlush() {
-        if (memtable_->ShouldFlush()) {
-            compat::LockGuard<compat::Mutex> lock(imm_mu_);
-            if (!imm_memtable_) {
-                imm_memtable_ = std::move(memtable_);
-                memtable_ = std::make_unique<MemTable>();
-                // Rotate WAL
-                wal_->Close();
-                std::string old_wal = data_dir_ + "/wal/current.wal";
-                std::string new_wal = data_dir_ + "/wal/rotating_" +
-                    std::to_string(sequence_.load()) + ".wal";
-                std::rename(old_wal.c_str(), new_wal.c_str());
-                wal_ = std::make_unique<WALWriter>(data_dir_ + "/wal/current.wal");
-                flush_pending_ = true;
-            }
+        if (memtable_->ShouldFlush() && !imm_memtable_) {
+            imm_memtable_ = std::move(memtable_);
+            memtable_ = std::make_unique<MemTable>();
+            // Rotate WAL
+            wal_->Close();
+            std::string old_wal = data_dir_ + "/wal/current.wal";
+            std::string new_wal = data_dir_ + "/wal/rotating_" +
+                std::to_string(sequence_.load()) + ".wal";
+            std::rename(old_wal.c_str(), new_wal.c_str());
+            wal_ = std::make_unique<WALWriter>(data_dir_ + "/wal/current.wal");
+            flush_pending_ = true;
         }
     }
 

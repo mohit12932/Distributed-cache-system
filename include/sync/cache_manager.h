@@ -31,7 +31,7 @@ enum class WriteMode {
 class CacheManager {
 public:
     struct Config {
-        size_t cache_capacity       = 65536;
+        size_t cache_capacity       = 1048576;  // 1M entries — high-throughput safe default
         WriteMode write_mode        = WriteMode::WriteBack;
         std::chrono::seconds flush_interval{5};
     };
@@ -66,6 +66,20 @@ public:
     }
 
     // ── Read Path (Cache-Aside) ────────────────────────────────────
+
+    /**
+     * TRY_GET — Cache-only read (no backend fallback).
+     * Used by traffic generator to avoid LSM disk I/O on misses.
+     */
+    cache::CacheResult try_get(const std::string& key) {
+        auto result = cache_.get(key);
+        if (result.hit) {
+            stats_.cache_hits++;
+        } else {
+            stats_.cache_misses++;
+        }
+        return result;
+    }
 
     /**
      * GET — Cache-Aside pattern.

@@ -45,9 +45,11 @@ class HTTPServer {
 public:
     using MetricsCallback = std::function<std::string()>;
 
+    static constexpr int MAX_ACTIVE_CONNS = 16;
+
     HTTPServer(int port, const std::string& web_root)
         : port_(port), web_root_(web_root), running_(false),
-          listen_sock_(HTTP_SOCKET_INVALID) {
+          listen_sock_(HTTP_SOCKET_INVALID), active_conns_(0) {
 #ifdef _WIN32
         WSADATA wsa;
         WSAStartup(MAKEWORD(2, 2), &wsa);
@@ -65,9 +67,12 @@ public:
         endpoints_[path] = std::move(handler);
     }
 
-    void start() {
+    /** Start the HTTP server. Returns false if the port is already in use. */
+    bool start() {
+        if (!initSocket()) return false;
         running_ = true;
         accept_thread_ = compat::Thread(&HTTPServer::acceptLoop, this);
+        return true;
     }
 
     void stop() {
@@ -90,25 +95,26 @@ private:
         }
     }
 
-    void acceptLoop() {
-        logToFile("[HTTP] acceptLoop() started");
+    /** Synchronous socket init — called by start() before spawning accept thread. */
+    bool initSocket() {
+        logToFile("[HTTP] initSocket() started");
         listen_sock_ = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
         if (listen_sock_ == HTTP_SOCKET_INVALID) {
             std::cerr << "[HTTP] Failed to create socket\n";
             logToFile("[HTTP] FAILED to create socket");
-            return;
+            return false;
         }
         logToFile("[HTTP] socket created successfully");
 
-        // Allow address reuse
+        // Prevent port hijacking on Windows; allow TIME_WAIT reuse on Linux
         int opt = 1;
 #ifdef _WIN32
-        setsockopt(listen_sock_, SOL_SOCKET, SO_REUSEADDR,
+        setsockopt(listen_sock_, SOL_SOCKET, SO_EXCLUSIVEADDRUSE,
                    reinterpret_cast<const char*>(&opt), sizeof(opt));
 #else
         setsockopt(listen_sock_, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt));
 #endif
-        logToFile("[HTTP] SO_REUSEADDR set");
+        logToFile("[HTTP] SO_EXCLUSIVEADDRUSE set");
 
         struct sockaddr_in addr;
         std::memset(&addr, 0, sizeof(addr));
@@ -118,11 +124,12 @@ private:
 
         if (bind(listen_sock_, reinterpret_cast<struct sockaddr*>(&addr),
                  sizeof(addr)) != 0) {
-            std::cerr << "[HTTP] Bind failed on port " << port_ << "\n";
+            std::cerr << "[HTTP] Bind failed on port " << port_
+                      << " — port is already in use.\n";
             logToFile("[HTTP] FAILED to bind on port " + std::to_string(port_));
             HTTP_CLOSE_SOCKET(listen_sock_);
             listen_sock_ = HTTP_SOCKET_INVALID;
-            return;
+            return false;
         }
         logToFile("[HTTP] bind() successful on port " + std::to_string(port_));
 
@@ -131,9 +138,14 @@ private:
             logToFile("[HTTP] FAILED listen()");
             HTTP_CLOSE_SOCKET(listen_sock_);
             listen_sock_ = HTTP_SOCKET_INVALID;
-            return;
+            return false;
         }
         logToFile("[HTTP] listen() successful");
+        return true;
+    }
+
+    void acceptLoop() {
+        logToFile("[HTTP] acceptLoop() started");
 
         std::cout << "[HTTP] Dashboard server listening on http://localhost:"
                   << port_ << "\n";
@@ -152,9 +164,17 @@ private:
 #endif
             if (client == HTTP_SOCKET_INVALID) continue;
 
-            // Handle each request in a detached thread
+            // Reject connections when too many are active to prevent thread explosion
+            if (active_conns_.load() >= MAX_ACTIVE_CONNS) {
+                HTTP_CLOSE_SOCKET(client);
+                continue;
+            }
+
+            // Handle each request in a detached thread with connection counting
+            active_conns_.fetch_add(1);
             compat::Thread([this, client]() {
                 handleClient(client);
+                active_conns_.fetch_add(-1);
             }).detach();
         }
     }
@@ -255,8 +275,24 @@ private:
     }
 
     void serveMetrics(http_socket_t sock, const std::string& cors) {
+        // Cache the metrics JSON to avoid expensive re-computation on every poll
+        uint64_t now = static_cast<uint64_t>(
+            std::chrono::duration_cast<std::chrono::milliseconds>(
+                std::chrono::steady_clock::now().time_since_epoch()).count());
+        {
+            compat::LockGuard<compat::Mutex> lock(metrics_cache_mu_);
+            if (now - metrics_cache_ts_ < 400 && !metrics_cache_.empty()) {
+                serveJSON(sock, metrics_cache_, cors);
+                return;
+            }
+        }
         std::string json = "{}";
         if (metrics_cb_) json = metrics_cb_();
+        {
+            compat::LockGuard<compat::Mutex> lock(metrics_cache_mu_);
+            metrics_cache_ = json;
+            metrics_cache_ts_ = now;
+        }
         serveJSON(sock, json, cors);
     }
 
@@ -375,6 +411,12 @@ private:
     compat::Atomic<bool> running_;
     http_socket_t    listen_sock_;
     MetricsCallback  metrics_cb_;
+    compat::Atomic<int>  active_conns_;
+
+    // Metrics response cache to prevent expensive recomputation on every poll
+    compat::Mutex    metrics_cache_mu_;
+    std::string      metrics_cache_;
+    uint64_t         metrics_cache_ts_ = 0;
 
     std::unordered_map<std::string, std::function<std::string(const std::string&)>> endpoints_;
     compat::Mutex    mu_;

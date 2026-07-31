@@ -58,22 +58,6 @@ header h1 span{color:#38bdf8}
 .row2{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px}
 canvas{max-height:175px}
 
-/* ═══ BURST BAR ═══ */
-.burst-bar{display:flex;align-items:center;gap:8px;margin-bottom:10px;padding:8px 14px;
-  background:linear-gradient(135deg,#1a0e0e,#1e1028);border:1px solid #3b1050;border-radius:9px;flex-wrap:wrap}
-.burst-bar label{font-size:.6em;color:#a78bfa;font-weight:700;text-transform:uppercase;letter-spacing:.5px;white-space:nowrap}
-.burst-bar input[type=text]{background:#0f172a;border:1px solid #334155;color:#d8dee9;border-radius:5px;padding:4px 8px;font-size:.7em;font-family:inherit;width:180px}
-.burst-bar input[type=number]{background:#0f172a;border:1px solid #334155;color:#d8dee9;border-radius:5px;padding:4px 6px;font-size:.7em;font-family:inherit;width:70px}
-.burst-bar input::placeholder{color:#475569}
-.btn{border:none;font-weight:700;padding:5px 14px;border-radius:6px;cursor:pointer;font-size:.66em;letter-spacing:.3px;transition:all .2s;text-transform:uppercase}
-.btn:hover{transform:scale(1.03)}.btn:active{transform:scale(.97)}
-.btn-burst{background:linear-gradient(135deg,#dc2626,#f87171);color:#fff}
-.btn-burst:hover{box-shadow:0 0 12px rgba(248,113,113,.3)}
-.btn-stop{background:linear-gradient(135deg,#334155,#64748b);color:#fff}
-.btn-stop.active{background:linear-gradient(135deg,#fbbf24,#f59e0b);color:#0f172a;box-shadow:0 0 10px rgba(251,191,36,.3)}
-.burst-status{font-size:.6em;margin-left:auto;font-weight:600;display:flex;align-items:center;gap:4px}
-.burst-dot{width:6px;height:6px;border-radius:50%;display:inline-block}
-
 /* ═══ CONTROL BAR ═══ */
 .ctrl-bar{display:flex;align-items:center;gap:6px;margin-bottom:10px;padding:7px 14px;
   background:#111827;border:1px solid #1e3050;border-radius:9px;flex-wrap:wrap}
@@ -137,7 +121,7 @@ canvas{max-height:175px}
 .pinn-stat strong{color:#a78bfa}
 
 /* ═══ SYSTEM LOG ═══ */
-.sys-log{flex:1;min-height:0;overflow-y:auto;background:#0a0c15;border:1px solid #1e3050;
+.sys-log{max-height:180px;overflow-y:auto;background:#0a0c15;border:1px solid #1e3050;
   border-radius:5px;padding:6px 8px;margin-top:8px;font-family:'Cascadia Code','Consolas',monospace;font-size:.54em;line-height:1.7}
 .sys-log div{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 
@@ -160,7 +144,7 @@ canvas{max-height:175px}
         <div class="badge on" id="badge"><div class="dot"></div><span id="badgeTxt">Connected</span></div>
         <div class="slider-wrap">
             <label>Traffic</label>
-            <input type="range" id="speedSlider" min="0" max="12000" value="0" step="50"
+            <input type="range" id="speedSlider" min="0" max="1000000" value="0" step="1000"
                    oninput="onSliderInput(this.value)" onchange="onSliderChange(this.value)">
             <div class="slider-val" id="speedVal">0 ops/s</div>
         </div>
@@ -212,20 +196,6 @@ canvas{max-height:175px}
         <div class="sv c-blue" id="sPinnSteps">0</div>
         <div class="sl">PINN Steps</div>
         <div class="ss">Loss: <span id="sPinnLoss">—</span></div>
-    </div>
-</div>
-
-<!-- ═══ PINN BURST TRIGGER BAR ═══ -->
-<div class="burst-bar">
-    <label>⚡ PINN Burst</label>
-    <input type="text" id="burstInput" placeholder="Segments: 0,1,2,3" title="Enter shard numbers separated by commas">
-    <label style="font-size:.55em;color:#64748b">Intensity</label>
-    <input type="number" id="burstIntensity" value="500" min="50" max="5000" step="50">
-    <button class="btn btn-burst" onclick="startBurst()">🔥 BURST</button>
-    <button class="btn btn-stop" id="btnStop" onclick="stopBurst()">⏹ STOP</button>
-    <div class="burst-status" id="burstStatus">
-        <span class="burst-dot" id="burstDot" style="background:#475569"></span>
-        <span id="burstStatusTxt">Idle</span>
     </div>
 </div>
 
@@ -420,7 +390,7 @@ canvas{max-height:175px}
 var API = window.location.origin || 'http://127.0.0.1:8080';
 var isRunning = true;
 var pollTimer = null;
-var prevOps=0, prevHits=0, prevMisses=0, prevFlush=0;
+var prevTotalOps=0, prevHits=0, prevMisses=0, prevFlush=0;
 var prevNodeReqs=[0,0,0,0,0];
 var prevSegLocks = new Array(32).fill(0);
 var trafficHistory=[];
@@ -430,6 +400,7 @@ var nodeReqRates=[0,0,0,0,0];
 var pendingRate = null;
 var burstActive = false;
 var trafficOn = false;
+var pollInFlight = false;  /* guard to prevent overlapping polls */
 
 /* 5-node topology positions (centers — circular layout) */
 var nodeCenters = [
@@ -501,12 +472,12 @@ function fmtK(n){if(n>=1e6)return(n/1e6).toFixed(1)+'M';if(n>=1e3)return(n/1e3).
 /* ═══ TRAFFIC SLIDER ═══ */
 function onSliderInput(val){
     val=parseInt(val)||0;
-    document.getElementById('speedVal').textContent=val+' ops/s';
+    document.getElementById('speedVal').textContent=fmtK(val)+' ops/s';
     pendingRate=val;
 }
 function onSliderChange(val){
     val=parseInt(val)||0;
-    document.getElementById('speedVal').textContent=val+' ops/s';
+    document.getElementById('speedVal').textContent=fmtK(val)+' ops/s';
     sendTrafficRate(val);
 }
 function sendTrafficRate(val){
@@ -521,53 +492,13 @@ function sendTrafficRate(val){
 }
 setInterval(function(){if(pendingRate!==null) sendTrafficRate(pendingRate);},500);
 
-/* ═══ PERSISTENT BURST ═══ */
-function startBurst(){
-    var input = document.getElementById('burstInput').value.trim();
-    var shards = [];
-    if(input){
-        input.split(',').forEach(function(s){
-            var n=parseInt(s.trim());
-            if(!isNaN(n)&&n>=0&&n<32) shards.push(n);
-        });
-    }
-    if(shards.length===0) shards=[0,1,2,3];
-    var intensity=parseInt(document.getElementById('burstIntensity').value)||500;
-
-    document.getElementById('burstStatusTxt').textContent='Starting...';
-    document.getElementById('burstDot').style.background='#fbbf24';
-
-    fetch(API+'/api/burst',{method:'POST',
-        headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({shards:shards,intensity:intensity})
-    }).then(function(r){return r.json();}).then(function(d){
-        if(d.status==='started'){
-            burstActive=true;
-            document.getElementById('burstStatusTxt').textContent='BURSTING ['+shards.join(',')+'] @ '+intensity;
-            document.getElementById('burstDot').style.background='#f87171';
-            document.getElementById('btnStop').className='btn btn-stop active';
-        } else {
-            document.getElementById('burstStatusTxt').textContent=d.msg||'Already running';
-            document.getElementById('burstDot').style.background='#fbbf24';
-        }
-    }).catch(function(){
-        document.getElementById('burstStatusTxt').textContent='Error';
-        document.getElementById('burstDot').style.background='#fb7185';
-    });
-}
+/* ═══ PERSISTENT BURST (API only — bar removed from UI) ═══ */
+function startBurst(){}
 function stopBurst(){
     fetch(API+'/api/burst-stop',{method:'POST',
         headers:{'Content-Type':'application/json'},body:'{}'
-    }).then(function(r){return r.json();}).then(function(d){
-        burstActive=false;
-        var msg='Stopped ('+fmtK(d.total_ops||0)+' ops, '+d.hot_detected+' hot)';
-        if(d.hot_detected>=3) msg+=' — HEAT STROKE!';
-        document.getElementById('burstStatusTxt').textContent=msg;
-        document.getElementById('burstDot').style.background='#475569';
-        document.getElementById('btnStop').className='btn btn-stop';
-    }).catch(function(){
-        document.getElementById('burstStatusTxt').textContent='Error stopping';
-    });
+    }).catch(function(){});
+    burstActive=false;
 }
 
 /* ═══ CONTROL BAR HANDLERS ═══ */
@@ -582,11 +513,11 @@ function ctrlToggleTraffic(){
         sendTrafficRate(0);
         showFeedback('Traffic stopped','#fb7185');
     } else {
-        var rate=5000;
+        var rate=1000000;
         document.getElementById('speedSlider').value=rate;
-        document.getElementById('speedVal').textContent=rate+' ops/s';
+        document.getElementById('speedVal').textContent=fmtK(rate)+' ops/s';
         sendTrafficRate(rate);
-        showFeedback('Traffic started at '+rate+' ops/s','#4ade80');
+        showFeedback('Traffic started at '+fmtK(rate)+' ops/s','#4ade80');
     }
 }
 function ctrlFlush(){
@@ -596,9 +527,13 @@ function ctrlFlush(){
         }).catch(function(){showFeedback('Flush failed','#fb7185');});
 }
 function ctrlElection(){
+    showFeedback('Election triggered, waiting...','#fbbf24');
     fetch(API+'/api/election',{method:'POST',headers:{'Content-Type':'application/json'},body:'{}'})
         .then(function(r){return r.json();}).then(function(d){
             showFeedback('Election: term '+d.old_term+' -> '+d.new_term+' (Leader: Node '+(d.leader_id>=0?d.leader_id:'?')+')','#a78bfa');
+            /* Force immediate poll to reflect election result */
+            setTimeout(poll, 200);
+            setTimeout(poll, 800);
         }).catch(function(){showFeedback('Election failed','#fb7185');});
 }
 function ctrlCompact(){
@@ -615,7 +550,7 @@ function ctrlReset(){
     showFeedback('Dashboard reset','#38bdf8');
 }
 function resetDashboard(){
-    prevOps=0;prevHits=0;prevMisses=0;prevFlush=0;
+    prevTotalOps=0;prevHits=0;prevMisses=0;prevFlush=0;
     prevNodeReqs=[0,0,0,0,0];nodeReqRates=[0,0,0,0,0];
     prevSegLocks=new Array(32).fill(0);
     trafficHistory=[];
@@ -662,9 +597,6 @@ function resetDashboard(){
     document.getElementById('riCommit').textContent='0';document.getElementById('riApplied').textContent='0';
     document.getElementById('riLog').textContent='0';document.getElementById('riLeader').textContent='—';
     document.getElementById('speedSlider').value=0;document.getElementById('speedVal').textContent='0 ops/s';
-    document.getElementById('burstStatusTxt').textContent='Idle';
-    document.getElementById('burstDot').style.background='#475569';
-    document.getElementById('btnStop').className='btn btn-stop';
     burstActive=false;trafficOn=false;
     document.getElementById('ctrlTraffic').textContent='▶ Start Traffic';
     document.getElementById('ctrlTraffic').className='btn-ctrl';
@@ -679,7 +611,7 @@ function toggleSystem(on){
     isRunning=on;
     if(!on){
         if(pollTimer){clearInterval(pollTimer);pollTimer=null;}
-        if(animId){cancelAnimationFrame(animId);animId=null;}
+        if(animId){clearTimeout(animId);animId=null;}
         sendTrafficRate(0);
         if(burstActive) stopBurst();
         resetDashboard();
@@ -736,7 +668,7 @@ function updateTopoLines(){
 
 /* ═══ TOPOLOGY ANIMATION (5-node) ═══ */
 function animateTopology(){
-    if(!isRunning){clearAllPkts();return;}
+    if(!isRunning){clearAllPkts();animId=null;return;}
     var svgNs='http://www.w3.org/2000/svg';
     var totalRate=0;
     for(var i=0;i<5;i++) totalRate+=nodeReqRates[i];
@@ -810,7 +742,7 @@ function animateTopology(){
         repPkts[r]=newRP;
         document.getElementById(lineId).setAttribute('stroke',repPkts[r].length>0?'#4ade80':'#1e3050');
     }
-    animId=requestAnimationFrame(animateTopology);
+    animId=setTimeout(animateTopology, 50);  /* 20fps to reduce CPU pressure at high load */
 }
 function clearAllPkts(){
     clientPkts=[];repPkts=[[],[],[],[]];
@@ -826,22 +758,28 @@ function clearAllPkts(){
 /* ═══ MAIN POLL ═══ */
 async function poll(){
     if(!isRunning) return;
+    if(pollInFlight) return;  /* skip if previous poll still running */
+    pollInFlight=true;
     try{
-        var r=await fetch(API+'/metrics');
+        var controller=new AbortController();
+        var timeoutId=setTimeout(function(){controller.abort();},3000);
+        var r=await fetch(API+'/metrics',{signal:controller.signal});
+        clearTimeout(timeoutId);
         var d=await r.json();
         document.getElementById('badge').className='badge on';
         document.getElementById('badgeTxt').textContent='Connected';
 
-        /* KPIs */
+        /* KPIs — includes writes for true ops/s */
         var hits=d.cache_hits||0, misses=d.cache_misses||0;
-        var ops=hits+misses;
-        var dOps=Math.max(0,ops-prevOps);prevOps=ops;
+        var writes=(d.write_back_ops||0)+(d.write_through_ops||0);
+        var totalOps=hits+misses+writes;
+        var dOps=Math.max(0,totalOps-prevTotalOps);prevTotalOps=totalOps;
         var dHits=Math.max(0,hits-prevHits);prevHits=hits;
         var dMiss=Math.max(0,misses-prevMisses);prevMisses=misses;
-        var hitRate=ops>0?(100*hits/ops):0;
+        var hitRate=(hits+misses)>0?(100*hits/(hits+misses)):0;
 
         document.getElementById('sOps').textContent=fmt(dOps);
-        document.getElementById('sTotalOps').textContent=fmtK(ops);
+        document.getElementById('sTotalOps').textContent=fmtK(totalOps);
         document.getElementById('sHitRate').textContent=hitRate.toFixed(1)+'%';
         document.getElementById('sHitRate').style.color=hitRate>80?'#4ade80':hitRate>50?'#fbbf24':'#fb7185';
         document.getElementById('sHits').textContent=fmtK(hits);
@@ -951,12 +889,6 @@ async function poll(){
         /* Burst status sync */
         if(d.burst_active!==undefined){
             burstActive=d.burst_active;
-            if(burstActive){
-                document.getElementById('burstDot').style.background='#f87171';
-                document.getElementById('btnStop').className='btn btn-stop active';
-                var opsDone=d.burst_ops_done||0;
-                document.getElementById('burstStatusTxt').textContent='BURSTING... '+fmtK(opsDone)+' ops';
-            }
         }
 
         /* PINN */
@@ -1002,7 +934,7 @@ async function poll(){
 
         for(var i=0;i<32;i++){
             var ratio=segDeltas[i]/avgDelta;
-            var heat=Math.min(100,ratio*40);
+            var heat=Math.min(100,ratio*ratio*50);  /* quadratic: amplify natural variation */
             var cell=document.getElementById('seg'+i);
             var cls='seg-cell ';
             if(heat>70) cls+='hot';
@@ -1061,6 +993,8 @@ async function poll(){
     }catch(e){
         document.getElementById('badge').className='badge off';
         document.getElementById('badgeTxt').textContent='Disconnected';
+    }finally{
+        pollInFlight=false;
     }
 }
 

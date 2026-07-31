@@ -394,8 +394,10 @@ private:
             next_index_[i]  = log_.LastIndex() + 1;
             match_index_[i] = 0;
         }
-        // Immediately send heartbeats
-        SendHeartbeats();
+        // Heartbeats will be sent by the ticker loop on the next iteration.
+        // NOTE: Do NOT call SendHeartbeats() here — BecomeLeader() is invoked
+        // while mu_ is held, and SendHeartbeats() also acquires mu_, which
+        // would cause a deadlock with non-recursive std::mutex.
     }
 
     void ResetElectionTimer() {

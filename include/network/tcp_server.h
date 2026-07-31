@@ -59,9 +59,10 @@ public:
         stop();
     }
 
-    /** Start the server (blocking — call from dedicated thread or main). */
-    void start() {
-        if (!init_socket()) return;
+    /** Start the server (blocking — call from dedicated thread or main).
+     *  Returns false if the port is already in use or bind fails. */
+    bool start() {
+        if (!init_socket()) return false;
         running_ = true;
 
         std::cout << "=== Distributed Cache Server ===\n";
@@ -70,6 +71,7 @@ public:
         std::cout << "Press Ctrl+C to stop.\n\n";
 
         accept_loop();
+        return true;
     }
 
     /** Signal the server to stop accepting new connections. */
@@ -110,10 +112,10 @@ private:
             return false;
         }
 
-        // Allow port reuse
+        // Prevent port hijacking on Windows; allow TIME_WAIT reuse on Linux
         int opt = 1;
 #ifdef _WIN32
-        setsockopt(listen_fd_, SOL_SOCKET, SO_REUSEADDR,
+        setsockopt(listen_fd_, SOL_SOCKET, SO_EXCLUSIVEADDRUSE,
                    reinterpret_cast<const char*>(&opt), sizeof(opt));
 #else
         setsockopt(listen_fd_, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt));

@@ -90,7 +90,7 @@ public:
 
         for (int i = num_weight_layers - 1; i >= 0; i--) {
             Tensor& act_input = activations_[i];
-            Tensor& pre_act = activations_[i + 1];
+            (void)activations_[i + 1];  // pre-activation (used for gradient reference)
 
             // Gradient w.r.t. weights
             Tensor grad_w = act_input.Transpose().MatMul(grad);

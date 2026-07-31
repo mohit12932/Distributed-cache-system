@@ -1,0 +1,2 @@
+.\build\distributed_cache.exe --port 6379 --http-port 8080 --capacity 65536 --mode write-back --flush-interval 5 --data-dir data --node-id 0 --cluster-size 5
+

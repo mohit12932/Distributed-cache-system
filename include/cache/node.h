@@ -50,6 +50,7 @@ public:
     }
 
     ~DoublyLinkedList() {
+        if (!head_) return;  // moved-from state: nothing to free
         Node* curr = head_->next;
         while (curr != tail_) {
             Node* next = curr->next;
