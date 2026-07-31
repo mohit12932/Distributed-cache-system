@@ -118,8 +118,17 @@ struct ServerConfig {
     int         cluster_size     = 5;
 };
 
+static uint16_t env_port(const char* name, uint16_t fallback) {
+    const char* value = std::getenv(name);
+    if (!value || !*value) return fallback;
+    long parsed = std::strtol(value, nullptr, 10);
+    if (parsed < 1 || parsed > 65535) return fallback;
+    return static_cast<uint16_t>(parsed);
+}
+
 ServerConfig parse_args(int argc, char* argv[]) {
     ServerConfig cfg;
+    cfg.http_port = env_port("PORT", cfg.http_port);
     for (int i = 1; i < argc; ++i) {
         std::string arg = argv[i];
         if ((arg == "--port" || arg == "-p") && i + 1 < argc)

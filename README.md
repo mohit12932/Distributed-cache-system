@@ -155,6 +155,32 @@ cache_hits:5
 cache_misses:0
 ```
 
+## 🌍 Deployment Split
+
+Use Vercel for the static dashboard and Render for the backend service.
+
+### Vercel frontend
+
+The frontend can be deployed as a static site from this repository. The dashboard reads its backend from either the `backend` query string, `localStorage.dcsBackendUrl`, or the `window.__API_BASE__` override.
+
+Example:
+
+```text
+https://your-vercel-app.vercel.app/?backend=https://your-render-service.onrender.com
+```
+
+### Render backend
+
+Render should run the backend process with its provided `PORT` environment variable. The HTTP dashboard/API listens on that port, while the TCP RESP listener remains available inside the process.
+
+Local build and run still work the same way:
+
+```powershell
+cmake -S . -B build
+cmake --build build
+build\distributed_cache.exe --port 6379 --mode write-back
+```
+
 ## 🧪 Testing
 
 ### Run All Tests

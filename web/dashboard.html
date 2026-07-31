@@ -387,7 +387,33 @@ canvas{max-height:175px}
 
 <script>
 /* ═══ STATE ═══ */
-var API = window.location.origin || 'http://127.0.0.1:8080';
+function readBackendUrl() {
+    var params = new URLSearchParams(window.location.search);
+    var fromQuery = params.get('backend');
+    var fromStorage = null;
+    try { fromStorage = window.localStorage.getItem('dcsBackendUrl'); } catch (e) {}
+    var fromGlobal = window.__DCS_BACKEND__ || window.__API_BASE__;
+    var candidate = fromQuery || fromStorage || fromGlobal;
+    if (candidate) return candidate.replace(/\/+$/, '');
+
+    var isLocalHost = /^(localhost|127\.0\.0\.1|0\.0\.0\.0)$/i.test(window.location.hostname);
+    if (isLocalHost) return window.location.origin || 'http://127.0.0.1:8080';
+
+    return 'https://YOUR-RENDER-SERVICE.onrender.com';
+}
+
+function saveBackendUrl(url) {
+    try { window.localStorage.setItem('dcsBackendUrl', url.replace(/\/+$/, '')); } catch (e) {}
+}
+
+var API = readBackendUrl();
+if (!/^(https?:)?\/\//i.test(API) || API.indexOf('YOUR-RENDER-SERVICE.onrender.com') !== -1) {
+    var promptBackend = window.prompt('Enter the backend URL for this dashboard', 'https://your-render-service.onrender.com');
+    if (promptBackend && promptBackend.trim()) {
+        API = promptBackend.trim().replace(/\/+$/, '');
+        saveBackendUrl(API);
+    }
+}
 var isRunning = true;
 var pollTimer = null;
 var prevTotalOps=0, prevHits=0, prevMisses=0, prevFlush=0;
