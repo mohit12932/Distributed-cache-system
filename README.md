@@ -65,6 +65,15 @@
 │  └──────────────────────────────────────────────────────────────┘  │
 └─────────────────────────────────────────────────────────────────────┘
 ```
+
+## How It Works
+
+1. A client sends a command like `SET` or `GET` to the server.
+2. The TCP server receives it and the RESP parser turns it into a command.
+3. The cache manager checks memory first, so common requests are fast.
+4. If needed, the system saves or loads data from disk through the storage layer.
+5. The dashboard shows live details like traffic, cache hits, and leader changes.
+
 ## 📸 Screenshots
 
 <img width="1428" height="600" alt="Screenshot 2026-02-16 003806" src="https://github.com/user-attachments/assets/5638764f-abbb-49ec-91f4-3d6ade550875" />
