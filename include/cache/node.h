@@ -51,12 +51,8 @@ public:
 
     ~DoublyLinkedList() {
         if (!head_) return;  // moved-from state: nothing to free
-        Node* curr = head_->next;
-        while (curr != tail_) {
-            Node* next = curr->next;
-            delete curr;
-            curr = next;
-        }
+        // We do NOT delete the nodes inside the list anymore!
+        // They are pre-allocated in the LRUCache Slab Arena and managed by std::vector.
         delete head_;
         delete tail_;
     }

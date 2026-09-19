@@ -7,6 +7,7 @@
 #include <functional>
 #include <vector>
 #include <utility>
+#include <memory>
 
 namespace dcs {
 namespace cache {
@@ -37,7 +38,15 @@ using EvictionCallback = std::function<void(const std::string&, const std::strin
 class LRUCache {
 public:
     explicit LRUCache(size_t capacity = 1024)
-        : capacity_(capacity) {}
+        : capacity_(capacity) {
+        // Pre-allocate the Slab Arena
+        slab_.reserve(capacity_);
+        free_list_.reserve(capacity_);
+        for (size_t i = 0; i < capacity_; ++i) {
+            slab_.push_back(std::make_unique<Node>());
+            free_list_.push_back(slab_.back().get());
+        }
+    }
 
     ~LRUCache() = default;
 
@@ -84,9 +93,23 @@ public:
             evict_lru();
         }
 
-        // Insert new node at MRU position
-        Node* node = new Node(key, value);
-        node->dirty = true;
+        // Insert new node from Slab Arena
+        Node* node = nullptr;
+        if (!free_list_.empty()) {
+            node = free_list_.back();
+            free_list_.pop_back();
+            node->key = key;
+            node->value = value;
+            node->prev = nullptr;
+            node->next = nullptr;
+            node->dirty = true;
+            node->last_access = std::chrono::steady_clock::now();
+        } else {
+            // Fallback (should never be reached due to capacity enforcement)
+            node = new Node(key, value);
+            node->dirty = true;
+        }
+
         list_.push_front(node);
         map_[key] = node;
     }
@@ -107,7 +130,8 @@ public:
             eviction_cb_(node->key, node->value, node->dirty);
         }
 
-        delete node;
+        // Return node to the Slab Arena instead of deleting it
+        free_list_.push_back(node);
         return true;
     }
 
@@ -175,13 +199,18 @@ private:
         }
 
         map_.erase(lru->key);
-        delete lru;
+        // Return node to Slab Arena
+        free_list_.push_back(lru);
     }
 
     size_t capacity_;
     DoublyLinkedList list_;
     std::unordered_map<std::string, Node*> map_;
     EvictionCallback eviction_cb_;
+    
+    // Slab Allocator Memory Pool
+    std::vector<std::unique_ptr<Node>> slab_;
+    std::vector<Node*> free_list_;
 };
 
 }  // namespace cache
