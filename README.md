@@ -65,7 +65,7 @@ The system exposes rich, real-time metrics scraped via Prometheus and visualized
 - **PINN Neural Network Training Loss & Shard Migrations**
 
 <div align="center">
-<img width="1919" height="937" alt="image" src="https://github.com/user-attachments/assets/121971a8-74df-4657-b9e8-da7fce00712a" />
+<img width="1919" height="887" alt="image" src="https://github.com/user-attachments/assets/471a3e63-4a99-47b8-9072-3015ed0c5016" />
 <br>
 </div>
 
