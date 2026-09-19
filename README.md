@@ -6,13 +6,13 @@
 
 ---
 
-## Why I Built It
+## 🌟 Why I Built It
 
 Traditional key-value stores struggle with tail-latency spikes during aggressive heap allocation and sudden heavily skewed traffic loads (the "thundering herd" problem). I built DCS to explore how modern C++ memory management (Slab Arenas) combined with Machine Learning (Physics-Informed Neural Networks) could dynamically predict and instantly rebalance shards before hotspots degrade throughput, achieving ultra-low latency under extreme quantitative loads.
 
 ---
 
-## Technical Highlights
+## 🔥 Technical Highlights
 
 - **Zero-Allocation Hot Path (Slab Arena)** — The steady-state cache bypasses the OS heap entirely. During initialization, it pre-allocates an `O(1)` contiguous memory pool, pushing pointer recycling to achieve a verified throughput of **1.8 Million Requests Per Second (RPS)** with near-zero memory fragmentation.
 - **Physics-Informed Neural Network (PINN)** — Implemented a custom C++ neural network that trains in real-time on live telemetry. By modeling cache load as a Partial Differential Equation (PDE) over time, the system mathematically detects traffic skew and proactively recommends hotspot migrations.
@@ -22,22 +22,31 @@ Traditional key-value stores struggle with tail-latency spikes during aggressive
 
 ---
 
-## Architecture
+## 🏗️ Architecture
 
-```text
-User / redis-benchmark
-  ↓ (TCP Round Robin)
-HAProxy (Load Balancer)
-  ↓ 
-C++ TCPServer (RESP Protocol Parser)
-  ↓ 
-32-Way Segmented Cache (Slab Allocator)
-  ↓ (Key Mutation)
-LSM Engine (WAL + MemTable + SSTable w/ Bloom Filter)
-  ↓ (Background Polling)
-PINN Predictive Sharder (Neural Network)
-  ↓ (Prometheus Scrape)
-Grafana Telemetry Dashboard
+```mermaid
+graph TD
+    Client[Client App / redis-benchmark] -->|TCP 6379| HAProxy[HAProxy Load Balancer]
+    HAProxy -->|Round Robin| Node1(Node-1: Cache Server)
+    HAProxy -->|Round Robin| Node2(Node-2: Cache Server)
+    HAProxy -->|Round Robin| Node3(Node-3: Cache Server)
+    
+    subgraph Distributed Cluster
+        Node1 <-->|Raft Consensus| Node2
+        Node2 <-->|Raft Consensus| Node3
+        Node3 <-->|Raft Consensus| Node1
+    end
+    
+    subgraph Internal Node Architecture
+        TCP[TCP RESP Parser] --> Cache[32-Way Segmented Cache w/ Slab Allocator]
+        Cache --> LSM[LSM Tree / SSTables w/ Bloom Filters]
+        Cache -.Telemetry.-> PINN[PINN Neural Network]
+    end
+    
+    Node1 -->|Metrics 8080| Prometheus[(Prometheus)]
+    Node2 -->|Metrics 8080| Prometheus
+    Node3 -->|Metrics 8080| Prometheus
+    Prometheus --> Grafana[Grafana Dashboard]
 ```
 
 1. **Ingress:** Clients send raw RESP string commands through an HAProxy load balancer.
@@ -48,7 +57,7 @@ Grafana Telemetry Dashboard
 
 ---
 
-## Engineering Depth
+## 🧠 Engineering Depth
 
 - **Algorithmic:** Built intrusive doubly linked lists, lock-striped hash maps, LSM-Tree compactions, probabilistic Bloom Filters, and Raft leader elections entirely from scratch without external libraries.
 - **Performance:** Bypassed `new`/`delete` context switching by building localized Slab memory pools, achieving 1.8M RPS bounded by network bridging, not CPU limits.
@@ -57,7 +66,22 @@ Grafana Telemetry Dashboard
 
 ---
 
-## Proof of Functionality & Local Demo
+## 📊 Dashboard & Observability
+
+The system exposes rich, real-time metrics scraped via Prometheus and visualized in Grafana. The dashboard tracks:
+- **Throughput & Cache Hit Ratio**
+- **Raft Consensus Node Status**
+- **LSM-Tree On-Disk Compactions**
+- **PINN Neural Network Training Loss & Shard Migrations**
+
+<div align="center">
+<img width="1919" height="887" alt="image" src="https://github.com/user-attachments/assets/471a3e63-4a99-47b8-9072-3015ed0c5016" />
+<br>
+</div>
+
+---
+
+## 🚀 Proof of Functionality & Local Demo
 
 The system operates 100% locally via a unified Docker architecture. The included stress-test script automatically launches the cluster, opens Grafana, and triggers three simultaneous extreme-case attacks to prove system stability:
 
