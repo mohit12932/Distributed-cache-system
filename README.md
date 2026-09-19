@@ -56,6 +56,20 @@ The entire architecture is fully containerized. You do not need to build the C++
    ```
    *(Navigate to Dashboards > Distributed Cache System)*
 
+## 📊 Dashboard & Observability
+
+The system exposes rich, real-time metrics scraped via Prometheus and visualized in Grafana. The dashboard tracks:
+- **Throughput & Cache Hit Ratio**
+- **Raft Consensus Node Status**
+- **LSM-Tree On-Disk Compactions**
+- **PINN Neural Network Training Loss & Shard Migrations**
+
+<div align="center">
+  <img src="https://raw.githubusercontent.com/mohit12932/Distributed-cache-system/main/monitoring/grafana/dashboards/screenshot.png" alt="Grafana Dashboard" width="800"/>
+  <br>
+  <em>(Upload your Grafana screenshot to your repository and replace the URL above)</em>
+</div>
+
 ## ⚡ Load Testing & Benchmarking
 
 Because this cache server uses the Redis Serialization Protocol (RESP), you can benchmark it using standard Redis tools.
