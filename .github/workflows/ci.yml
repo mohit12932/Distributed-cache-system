@@ -64,8 +64,8 @@ jobs:
       
     - name: Build and Start Docker Cluster
       run: |
-        docker-compose build
-        docker-compose up -d
+        docker compose build
+        docker compose up -d
         
     - name: Verify Cluster Health
       run: |
@@ -75,4 +75,4 @@ jobs:
         
     - name: View Logs on Failure
       if: failure()
-      run: docker-compose logs
+      run: docker compose logs

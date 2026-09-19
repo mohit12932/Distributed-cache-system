@@ -211,7 +211,7 @@ private:
                 size_t body_received = request.size() - (header_end + 4);
                 int tries = 0;
                 while ((int)body_received < content_len && tries < 50) {
-                    int r = recv(sock, buf, std::min((int)sizeof(buf)-1, content_len - (int)body_received), 0);
+                    int r = recv(sock, buf, (std::min)((int)sizeof(buf)-1, content_len - (int)body_received), 0);
                     if (r <= 0) break;
                     buf[r] = '\0';
                     request.append(buf, r);
