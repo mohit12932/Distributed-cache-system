@@ -5,7 +5,7 @@
 #include "include/network/resp_parser.h"
 #include "include/network/client_handler.h"
 #include "include/sync/cache_manager.h"
-#include "include/persistence/file_storage.h"
+#include "include/storage/lsm_engine.h"
 
 #include <iostream>
 #include <cassert>
@@ -96,7 +96,7 @@ TEST(test_encode_array) {
 
 TEST(test_handler_set_get) {
     std::string test_file = "test_data/handler_test.dat";
-    dcs::persistence::FileStorage storage(test_file);
+    dcs::storage::LSMEngine storage(test_file);
     dcs::sync::CacheManager::Config cfg;
     cfg.write_mode = dcs::sync::WriteMode::WriteThrough;
     dcs::sync::CacheManager manager(cfg, &storage);
@@ -119,7 +119,7 @@ TEST(test_handler_set_get) {
 
 TEST(test_handler_del) {
     std::string test_file = "test_data/handler_del.dat";
-    dcs::persistence::FileStorage storage(test_file);
+    dcs::storage::LSMEngine storage(test_file);
     dcs::sync::CacheManager::Config cfg;
     cfg.write_mode = dcs::sync::WriteMode::WriteThrough;
     dcs::sync::CacheManager manager(cfg, &storage);
@@ -142,7 +142,7 @@ TEST(test_handler_del) {
 
 TEST(test_handler_exists) {
     std::string test_file = "test_data/handler_exists.dat";
-    dcs::persistence::FileStorage storage(test_file);
+    dcs::storage::LSMEngine storage(test_file);
     dcs::sync::CacheManager::Config cfg;
     cfg.write_mode = dcs::sync::WriteMode::WriteThrough;
     dcs::sync::CacheManager manager(cfg, &storage);
@@ -165,7 +165,7 @@ TEST(test_handler_exists) {
 
 TEST(test_handler_ping) {
     std::string test_file = "test_data/handler_ping.dat";
-    dcs::persistence::FileStorage storage(test_file);
+    dcs::storage::LSMEngine storage(test_file);
     dcs::sync::CacheManager::Config cfg;
     dcs::sync::CacheManager manager(cfg, &storage);
     ClientHandler handler(&manager);
@@ -186,7 +186,7 @@ TEST(test_handler_ping) {
 
 TEST(test_handler_unknown_command) {
     std::string test_file = "test_data/handler_unknown.dat";
-    dcs::persistence::FileStorage storage(test_file);
+    dcs::storage::LSMEngine storage(test_file);
     dcs::sync::CacheManager::Config cfg;
     dcs::sync::CacheManager manager(cfg, &storage);
     ClientHandler handler(&manager);
@@ -204,7 +204,7 @@ TEST(test_handler_unknown_command) {
 
 TEST(test_handler_quit) {
     std::string test_file = "test_data/handler_quit.dat";
-    dcs::persistence::FileStorage storage(test_file);
+    dcs::storage::LSMEngine storage(test_file);
     dcs::sync::CacheManager::Config cfg;
     dcs::sync::CacheManager manager(cfg, &storage);
     ClientHandler handler(&manager);

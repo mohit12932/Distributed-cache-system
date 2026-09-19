@@ -120,7 +120,15 @@ public:
 
     bool Add(const std::string& key, const std::string& value) {
         if (!file_.is_open()) return false;
-        entries_.push_back({key, value});
+        entries_.push_back({key, value, false});
+        bloom_.Add(key);
+        entry_count_++;
+        return true;
+    }
+
+    bool AddTombstone(const std::string& key) {
+        if (!file_.is_open()) return false;
+        entries_.push_back({key, "", true});
         bloom_.Add(key);
         entry_count_++;
         return true;
@@ -137,7 +145,7 @@ public:
         for (const auto& kv : entries_) {
             BlockHandle bh;
             bh.offset = current_offset_;
-            std::string record = EncodeKV(kv.key, kv.value);
+            std::string record = EncodeKV(kv.key, kv.value, kv.is_tombstone);
             bh.size = record.size();
             file_.write(record.data(), record.size());
             current_offset_ += record.size();
@@ -175,16 +183,18 @@ public:
     size_t EntryCount() const { return entry_count_; }
 
 private:
-    struct KV { std::string key, value; };
+    struct KV { std::string key, value; bool is_tombstone; };
 
-    static std::string EncodeKV(const std::string& key, const std::string& value) {
+    static std::string EncodeKV(const std::string& key, const std::string& value, bool is_tombstone) {
         std::string buf;
         uint32_t klen = static_cast<uint32_t>(key.size());
         uint32_t vlen = static_cast<uint32_t>(value.size());
+        uint8_t type = is_tombstone ? 1 : 0;
         buf.append(reinterpret_cast<const char*>(&klen), 4);
         buf.append(key);
         buf.append(reinterpret_cast<const char*>(&vlen), 4);
         buf.append(value);
+        buf.append(reinterpret_cast<const char*>(&type), 1);
         return buf;
     }
 
@@ -217,11 +227,11 @@ public:
         Load();
     }
 
-    bool Get(const std::string& key, std::string& value) const {
+    bool Get(const std::string& key, std::string& value, bool& is_tombstone) const {
         if (!valid_ || !bloom_.MayContain(key)) return false;
         auto it = index_.find(key);
         if (it == index_.end()) return false;
-        return ReadKVAt(it->second, key, value);
+        return ReadKVAt(it->second, key, value, is_tombstone);
     }
 
     bool Valid()  const { return valid_; }
@@ -282,7 +292,7 @@ private:
     }
 
     bool ReadKVAt(const BlockHandle& bh, const std::string& expected_key,
-                  std::string& value) const {
+                  std::string& value, bool& is_tombstone) const {
         std::ifstream file(filepath_, std::ios::binary);
         if (!file.is_open()) return false;
         file.seekg(bh.offset);
@@ -295,7 +305,13 @@ private:
         file.read(reinterpret_cast<char*>(&vlen), 4);
         value.resize(vlen);
         file.read(&value[0], vlen);
-        return file.good();
+        uint8_t type = 0;
+        if (file.read(reinterpret_cast<char*>(&type), 1)) {
+            is_tombstone = (type == 1);
+        } else {
+            is_tombstone = false;
+        }
+        return file.good() || file.eof();
     }
 
     std::string filepath_;

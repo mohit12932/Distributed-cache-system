@@ -19,7 +19,7 @@ namespace cache {
  * The key space is divided into N_SEGMENTS independent segments, each
  * with its own LRU cache and its own read-write lock.
  *
- * - GET acquires a shared (read) lock  -> concurrent reads don't block.
+ * - GET acquires an exclusive (write) lock -> LRU promotion mutates the list.
  * - PUT/DELETE acquires an exclusive (write) lock -> blocks only its segment.
  * - A write to key "A" in segment 3 does NOT block a read of key "B" in segment 7.
  *

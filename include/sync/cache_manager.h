@@ -126,11 +126,12 @@ public:
      * DELETE — Remove from cache AND backend.
      */
     bool del(const std::string& key) {
-        cache_.del(key);
+        bool in_cache = cache_.del(key);
+        bool in_backend = false;
         if (backend_) {
-            backend_->remove(key);
+            in_backend = backend_->remove(key);
         }
-        return true;
+        return in_cache || in_backend;
     }
 
     // ── Admin ──────────────────────────────────────────────────────
@@ -147,8 +148,7 @@ public:
     /** Clear all entries from cache and backend (FLUSHALL). */
     void flush_all() {
         cache_.clear();   // eviction callback persists dirty data first
-        // Not clearing backend on purpose for persistence semantics,
-        // but to match Redis FLUSHALL we need an empty cache.
+        if (backend_) backend_->flush_all();
     }
 
     /** Graceful shutdown: flush dirty data, stop worker. */
@@ -178,18 +178,18 @@ private:
      * Returns OK only after DB confirms success.
      */
     bool put_write_through(const std::string& key, const std::string& value) {
-        // Step 1: Update cache
-        cache_.put(key, value);
-
-        // Step 2: Synchronously write to DB
+        // Step 1: Synchronously write to DB
         if (backend_) {
             bool ok = backend_->store(key, value);
             if (!ok) {
                 std::cerr << "[WriteThrough] DB write failed for key: " << key << "\n";
                 return false;
             }
-            cache_.clear_dirty(key);  // persisted successfully
         }
+        
+        // Step 2: Update cache
+        cache_.put(key, value);
+        cache_.clear_dirty(key);  // persisted successfully
 
         stats_.write_through_count++;
         return true;

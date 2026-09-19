@@ -55,6 +55,10 @@ public:
         , listen_fd_(SOCKET_INVALID)
         , client_count_(0) {}
 
+    void set_auth_password(const std::string& pwd) {
+        auth_password_ = pwd;
+    }
+
     ~TCPServer() {
         stop();
     }
@@ -175,7 +179,7 @@ private:
     }
 
     void handle_client(socket_t fd, std::string ip) {
-        ClientHandler handler(manager_);
+        ClientHandler handler(manager_, auth_password_);
         std::string buffer;
         char recv_buf[4096];
 
@@ -235,6 +239,7 @@ private:
     sync::CacheManager* manager_;
     compat::Atomic<bool> running_;
     socket_t listen_fd_;
+    std::string auth_password_;
     compat::Atomic<uint32_t> client_count_;
     std::vector<compat::Thread> client_threads_;
     compat::Mutex threads_mu_;

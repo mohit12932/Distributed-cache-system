@@ -31,8 +31,8 @@ namespace network {
  */
 class ClientHandler {
 public:
-    explicit ClientHandler(sync::CacheManager* manager)
-        : manager_(manager) {}
+    explicit ClientHandler(sync::CacheManager* manager, const std::string& auth_password = "")
+        : manager_(manager), auth_password_(auth_password), authenticated_(auth_password.empty()) {}
 
     struct Response {
         std::string data;
@@ -49,6 +49,25 @@ public:
 
         std::string cmd = to_upper(tokens[0]);
 
+        // ── Auth Command ─────────────────────────────────────────
+        if (cmd == "AUTH") {
+            if (tokens.size() < 2) return {RESPParser::encode_error("ERR wrong number of arguments for 'auth' command")};
+            if (auth_password_.empty()) {
+                return {RESPParser::encode_error("ERR Client sent AUTH, but no password is set")};
+            }
+            if (tokens[1] == auth_password_) {
+                authenticated_ = true;
+                return {RESPParser::encode_simple_string("OK")};
+            } else {
+                return {RESPParser::encode_error("WRONGPASS invalid username-password pair or user is disabled.")};
+            }
+        }
+
+        if (!authenticated_) {
+            if (cmd == "QUIT") return {RESPParser::encode_simple_string("OK"), true};
+            return {RESPParser::encode_error("NOAUTH Authentication required.")};
+        }
+
         // ── Core Data Commands ───────────────────────────────────
         if (cmd == "GET") {
             if (tokens.size() < 2) return {RESPParser::encode_error("wrong number of arguments for 'GET'")};
@@ -64,7 +83,9 @@ public:
             for (size_t i = 3; i < tokens.size(); ++i) {
                 value += " " + tokens[i];
             }
-            manager_->put(tokens[1], value);
+            if (!manager_->put(tokens[1], value)) {
+                return {RESPParser::encode_error("ERR write failed")};
+            }
             return {RESPParser::encode_simple_string("OK")};
         }
 
@@ -162,6 +183,8 @@ private:
     }
 
     sync::CacheManager* manager_;
+    std::string auth_password_;
+    bool authenticated_;
 };
 
 }  // namespace network

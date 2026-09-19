@@ -43,7 +43,8 @@ public:
     bool Append(const WALRecord& record) {
         compat::LockGuard<compat::Mutex> lock(mu_);
         std::string serialized = Serialize(record);
-        return WriteFrame(serialized);
+        if (!WriteFrame(serialized)) return false;
+        return Sync();
     }
 
     bool AppendBatch(const std::vector<WALRecord>& records) {

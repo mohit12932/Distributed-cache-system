@@ -45,6 +45,9 @@ public:
 
     /** Check if the backend is healthy / accessible. */
     virtual bool ping() = 0;
+
+    /** Flush all data from the backend */
+    virtual void flush_all() = 0;
 };
 
 }  // namespace persistence

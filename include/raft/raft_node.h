@@ -433,41 +433,5 @@ private:
     compat::Thread   applier_thread_;
 };
 
-// ──── Local Transport (for single-process simulation) ──────────
-
-class LocalRaftTransport : public RaftTransport {
-public:
-    void RegisterNode(int id, RaftNode* node) {
-        compat::LockGuard<compat::Mutex> lock(mu_);
-        nodes_[id] = node;
-    }
-
-    RequestVoteReply SendRequestVote(int peer_id, const RequestVoteArgs& args) override {
-        RaftNode* node = nullptr;
-        {
-            compat::LockGuard<compat::Mutex> lock(mu_);
-            auto it = nodes_.find(peer_id);
-            if (it == nodes_.end()) return {args.term, false};
-            node = it->second;
-        }
-        return node->HandleRequestVote(args);
-    }
-
-    AppendEntriesReply SendAppendEntries(int peer_id, const AppendEntriesArgs& args) override {
-        RaftNode* node = nullptr;
-        {
-            compat::LockGuard<compat::Mutex> lock(mu_);
-            auto it = nodes_.find(peer_id);
-            if (it == nodes_.end()) return {args.term, false, 0};
-            node = it->second;
-        }
-        return node->HandleAppendEntries(args);
-    }
-
-private:
-    std::unordered_map<int, RaftNode*> nodes_;
-    compat::Mutex mu_;
-};
-
 }  // namespace raft
 }  // namespace dcs

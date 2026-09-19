@@ -29,10 +29,20 @@ struct PersistentState {
 class RaftLog {
 public:
     explicit RaftLog(const std::string& data_dir = "data/raft")
-        : data_dir_(data_dir) {
+        : data_dir_(data_dir), base_index_(0) {
         EnsureDir(data_dir_);
         LoadState();
         LoadEntries();
+        std::string path = data_dir_ + "/raft_log.dat";
+        log_file_.open(path, std::ios::binary | std::ios::app);
+    }
+
+    ~RaftLog() {
+        compat::LockGuard<compat::Mutex> lock(mu_);
+        if (log_file_.is_open()) {
+            log_file_.flush();
+            log_file_.close();
+        }
     }
 
     // ─── Persistent State ──────────────────────────────────────
@@ -81,25 +91,26 @@ public:
 
     bool GetEntry(uint64_t index, LogEntry& out) const {
         compat::LockGuard<compat::Mutex> lock(const_cast<compat::Mutex&>(mu_));
-        // After compaction, entries may not start at index 1
-        for (const auto& e : entries_) {
-            if (e.index == index) { out = e; return true; }
-        }
-        return false;
+        if (index < base_index_ || entries_.empty()) return false;
+        size_t pos = index - base_index_;
+        if (pos >= entries_.size()) return false;
+        out = entries_[pos];
+        return true;
     }
 
     uint64_t TermAt(uint64_t index) const {
         compat::LockGuard<compat::Mutex> lock(const_cast<compat::Mutex&>(mu_));
         if (index == 0) return 0;
-        for (const auto& e : entries_) {
-            if (e.index == index) return e.term;
-        }
-        return 0;
+        if (index < base_index_ || entries_.empty()) return 0;
+        size_t pos = index - base_index_;
+        if (pos >= entries_.size()) return 0;
+        return entries_[pos].term;
     }
 
     void Append(const LogEntry& entry) {
         compat::LockGuard<compat::Mutex> lock(mu_);
         entries_.push_back(entry);
+        if (entries_.size() == 1) base_index_ = entry.index;
         AppendEntryToFile(entry);
     }
 
@@ -107,6 +118,7 @@ public:
         compat::LockGuard<compat::Mutex> lock(mu_);
         for (const auto& entry : batch) {
             entries_.push_back(entry);
+            if (entries_.size() == 1) base_index_ = entry.index;
             AppendEntryToFile(entry);
         }
     }
@@ -125,6 +137,7 @@ public:
         }
         if (keep < entries_.size()) {
             entries_.resize(keep);
+            if (entries_.empty()) base_index_ = 0;
             RewriteLog();
         }
     }
@@ -143,6 +156,11 @@ public:
         entries_.erase(entries_.begin(), entries_.begin() + remove_count);
         // Shrink to fit to actually free memory
         entries_.shrink_to_fit();
+        if (!entries_.empty()) {
+            base_index_ = entries_.front().index;
+        } else {
+            base_index_ = 0;
+        }
         RewriteLog();
     }
 
@@ -197,20 +215,27 @@ private:
             f.read(&entry.command[0], cmd_len);
             if (f.good()) entries_.push_back(entry);
         }
+        if (!entries_.empty()) {
+            base_index_ = entries_.front().index;
+        } else {
+            base_index_ = 0;
+        }
     }
 
     void AppendEntryToFile(const LogEntry& entry) {
-        std::string path = data_dir_ + "/raft_log.dat";
-        std::ofstream f(path, std::ios::binary | std::ios::app);
-        f.write(reinterpret_cast<const char*>(&entry.term), 8);
-        f.write(reinterpret_cast<const char*>(&entry.index), 8);
+        if (!log_file_.is_open()) return;
+        log_file_.write(reinterpret_cast<const char*>(&entry.term), 8);
+        log_file_.write(reinterpret_cast<const char*>(&entry.index), 8);
         uint32_t cmd_len = static_cast<uint32_t>(entry.command.size());
-        f.write(reinterpret_cast<const char*>(&cmd_len), 4);
-        f.write(entry.command.data(), cmd_len);
-        f.flush();
+        log_file_.write(reinterpret_cast<const char*>(&cmd_len), 4);
+        log_file_.write(entry.command.data(), cmd_len);
+        log_file_.flush();
     }
 
     void RewriteLog() {
+        if (log_file_.is_open()) {
+            log_file_.close();
+        }
         // Rewrite entire log file after truncation
         std::string path = data_dir_ + "/raft_log.dat";
         std::ofstream f(path, std::ios::binary | std::ios::trunc);
@@ -222,6 +247,8 @@ private:
             f.write(entry.command.data(), cmd_len);
         }
         f.flush();
+        f.close();
+        log_file_.open(path, std::ios::binary | std::ios::app);
     }
 
     static void EnsureDir(const std::string& path) {
@@ -235,6 +262,8 @@ private:
     std::string          data_dir_;
     PersistentState      state_;
     std::vector<LogEntry> entries_;
+    uint64_t             base_index_;
+    std::ofstream        log_file_;
     compat::Mutex        mu_;
 };
 

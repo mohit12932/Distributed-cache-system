@@ -1,7 +1,0 @@
-services:
-  - type: web
-    name: distributed-cache-backend
-    env: docker
-    plan: starter
-    dockerfilePath: ./Dockerfile
-    healthCheckPath: /metrics

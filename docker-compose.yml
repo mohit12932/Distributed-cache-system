@@ -1,0 +1,79 @@
+version: '3.8'
+
+services:
+  node-1:
+    build: .
+    container_name: node-1
+    environment:
+      - CACHE_AUTH_PASS=MySuperSecret
+      - NODE_ID=1
+      - CLUSTER_SIZE=3
+    command: ["/app/distributed_cache", "--port", "6379", "--http-port", "8080", "--mode", "write-back", "--node-id", "1", "--cluster-size", "3"]
+    volumes:
+      - node1_data:/app/data
+
+  node-2:
+    build: .
+    container_name: node-2
+    environment:
+      - CACHE_AUTH_PASS=MySuperSecret
+      - NODE_ID=2
+      - CLUSTER_SIZE=3
+    command: ["/app/distributed_cache", "--port", "6379", "--http-port", "8080", "--mode", "write-back", "--node-id", "2", "--cluster-size", "3"]
+    volumes:
+      - node2_data:/app/data
+
+  node-3:
+    build: .
+    container_name: node-3
+    environment:
+      - CACHE_AUTH_PASS=MySuperSecret
+      - NODE_ID=3
+      - CLUSTER_SIZE=3
+    command: ["/app/distributed_cache", "--port", "6379", "--http-port", "8080", "--mode", "write-back", "--node-id", "3", "--cluster-size", "3"]
+    volumes:
+      - node3_data:/app/data
+
+  haproxy:
+    image: haproxy:2.8
+    container_name: haproxy
+    ports:
+      - "6379:6379"
+      - "8404:8404"
+    volumes:
+      - ./monitoring/haproxy/haproxy.cfg:/usr/local/etc/haproxy/haproxy.cfg:ro
+    depends_on:
+      - node-1
+      - node-2
+      - node-3
+
+  prometheus:
+    image: prom/prometheus:v2.47.0
+    container_name: prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+
+  grafana:
+    image: grafana/grafana:10.1.2
+    container_name: grafana
+    ports:
+      - "3000:3000"
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./monitoring/grafana/dashboards:/var/lib/grafana/dashboards:ro
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+    depends_on:
+      - prometheus
+
+volumes:
+  node1_data:
+  node2_data:
+  node3_data:
+  grafana_data:

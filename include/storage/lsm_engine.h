@@ -106,8 +106,10 @@ public:
         for (int level = 0; level < kMaxLevels; level++) {
             for (int i = static_cast<int>(levels_[level].size()) - 1; i >= 0; i--) {
                 std::string value;
-                if (levels_[level][i]->Get(key, value)) {
+                bool is_tombstone = false;
+                if (levels_[level][i]->Get(key, value, is_tombstone)) {
                     stats_.bloom_filter_hits++;
+                    if (is_tombstone) return persistence::LoadResult::Miss();
                     return persistence::LoadResult::Hit(value);
                 }
             }
@@ -119,7 +121,7 @@ public:
         stats_.total_puts++;
         uint64_t seq = sequence_++;
         WALRecord rec{WALRecordType::kPut, key, value, seq};
-        wal_->Append(rec);
+        if (!wal_->Append(rec)) return false;
         {
             compat::LockGuard<compat::Mutex> lock(imm_mu_);
             memtable_->Put(key, value, seq);
@@ -135,7 +137,7 @@ public:
         stats_.total_deletes++;
         uint64_t seq = sequence_++;
         WALRecord rec{WALRecordType::kDelete, key, "", seq};
-        wal_->Append(rec);
+        if (!wal_->Append(rec)) return false;
         {
             compat::LockGuard<compat::Mutex> lock(imm_mu_);
             memtable_->Delete(key, seq);
@@ -151,7 +153,7 @@ public:
             uint64_t seq = sequence_++;
             wal_batch.push_back({WALRecordType::kPut, e.first, e.second, seq});
         }
-        wal_->AppendBatch(wal_batch);
+        if (!wal_->AppendBatch(wal_batch)) return false;
         {
             compat::LockGuard<compat::Mutex> lock(imm_mu_);
             for (size_t i = 0; i < entries.size(); i++) {
@@ -167,6 +169,53 @@ public:
     }
 
     bool ping() override { return running_; }
+
+    void flush_all() override {
+        compat::LockGuard<compat::Mutex> lock1(imm_mu_);
+        compat::LockGuard<compat::Mutex> lock2(sst_mu_);
+        
+        memtable_->Clear();
+        if (imm_memtable_) imm_memtable_->Clear();
+        flush_pending_ = false;
+
+        for (int i = 0; i < kMaxLevels; i++) {
+            levels_[i].clear();
+        }
+        stats_.sstable_count.store(0);
+        
+        wal_->Close();
+        std::remove((data_dir_ + "/wal/current.wal").c_str());
+        wal_ = std::make_unique<WALWriter>(data_dir_ + "/wal/current.wal");
+        sequence_ = 0;
+
+        for (int level = 0; level < kMaxLevels; level++) {
+            std::string dir = data_dir_ + "/sst/L" + std::to_string(level);
+#ifdef _WIN32
+            struct _finddata_t fileinfo;
+            std::string pattern = dir + "/*.sst";
+            intptr_t handle = _findfirst(pattern.c_str(), &fileinfo);
+            if (handle != -1) {
+                do {
+                    std::remove((dir + "/" + fileinfo.name).c_str());
+                } while (_findnext(handle, &fileinfo) == 0);
+                _findclose(handle);
+            }
+#else
+            DIR* d = opendir(dir.c_str());
+            if (d) {
+                struct dirent* entry;
+                while ((entry = readdir(d)) != nullptr) {
+                    std::string name(entry->d_name);
+                    if (name.size() > 4 && name.substr(name.size() - 4) == ".sst") {
+                        std::remove((dir + "/" + name).c_str());
+                    }
+                }
+                closedir(d);
+            }
+#endif
+        }
+        CleanupRotatedWALs();
+    }
 
     // ─── Statistics ────────────────────────────────────────────
 
@@ -237,6 +286,8 @@ private:
         imm_memtable_->ForEach([&](const InternalKey& ik, const std::string& val) {
             if (ik.type == ValueType::kValue) {
                 writer.Add(ik.key, val);
+            } else if (ik.type == ValueType::kDeletion) {
+                writer.AddTombstone(ik.key);
             }
         });
         writer.Finish();
@@ -304,9 +355,14 @@ private:
         SSTableWriter writer(sst_path);
         for (const auto& ks : key_source) {
             std::string val;
+            bool is_tombstone = false;
             auto& src = levels_[ks.second.first][ks.second.second];
-            if (src->Get(ks.first, val)) {
-                writer.Add(ks.first, val);
+            if (src->Get(ks.first, val, is_tombstone)) {
+                if (is_tombstone) {
+                    writer.AddTombstone(ks.first);
+                } else {
+                    writer.Add(ks.first, val);
+                }
             }
         }
         writer.Finish();
@@ -391,12 +447,18 @@ private:
         } while (_findnext(handle, &fileinfo) == 0);
         _findclose(handle);
 #else
-        // Simple cleanup with system call
-        std::string cmd = "rm -f " + data_dir_ + "/wal/rotating_*.wal";
-    int rc = system(cmd.c_str());
-    if (rc != 0) {
-        std::cerr << "[LSM] WAL cleanup command failed with code " << rc << "\n";
-    }
+        // POSIX: use opendir/readdir
+        DIR* d = opendir((data_dir_ + "/wal").c_str());
+        if (!d) return;
+        struct dirent* entry;
+        while ((entry = readdir(d)) != nullptr) {
+            std::string name(entry->d_name);
+            if (name.find("rotating_") == 0 && name.substr(name.size() > 4 ? name.size() - 4 : 0) == ".wal") {
+                std::string filepath = data_dir_ + "/wal/" + name;
+                std::remove(filepath.c_str());
+            }
+        }
+        closedir(d);
 #endif
     }
 
