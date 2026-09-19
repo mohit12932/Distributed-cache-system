@@ -1,88 +1,84 @@
-# Distributed ML-Powered Cache System 🚀
+# Distributed Cache System (DCS)
 
-A highly-available, distributed caching system written in C++ that achieves **1.8+ Million Requests Per Second (RPS)** locally. It features a custom Log-Structured Merge (LSM) tree storage engine, 3-Node Raft consensus clustering, and an integrated Physics-Informed Neural Network (PINN) that dynamically predicts cache hotspots in real-time.
+> A 1.8M RPS, zero-allocation distributed C++ cache engine backed by an LSM-Tree and a real-time Physics-Informed Neural Network for predictive shard migration.
 
-## 🌟 Key Features
+[C++17] [Raft Consensus] [LSM-Tree] [Neural Network] [Docker] [Grafana]
 
-- **Extreme Throughput:** Achieves **1.81M+ RPS** via a heavily optimized, 32-way lock-striped concurrent architecture and pipelined RESP processing.
-- **Distributed Architecture:** A **3-Node Raft Consensus** cluster guarantees high availability. All nodes sit behind an **HAProxy** TCP load balancer for seamless client routing.
-- **LSM-Tree Storage Engine:** Custom-built persistent backend utilizing Memtables, Write-Ahead Logs (WAL), and SSTables on disk, preventing data loss upon restart.
-- **Machine Learning Integration:** A live Physics-Informed Neural Network (PINN) runs in a background thread, constantly training on internal memory segment telemetry to predict hotspots and recommend cache shard migrations.
-- **Full Observability:** Deep integration with **Prometheus** and **Grafana**, exposing real-time metrics for cache hits/misses, LSM compactions, and ML Neural Network training loss.
+---
 
-## 🏗️ Architecture
+## Why I Built It
 
-```mermaid
-graph TD
-    Client[Client App / redis-cli] -->|TCP 6379| HAProxy[HAProxy Load Balancer]
-    HAProxy -->|Round Robin| Node1(Node-1: Cache Server)
-    HAProxy -->|Round Robin| Node2(Node-2: Cache Server)
-    HAProxy -->|Round Robin| Node3(Node-3: Cache Server)
-    
-    subgraph Distributed Cluster
-        Node1 <-->|Raft Consensus| Node2
-        Node2 <-->|Raft Consensus| Node3
-        Node3 <-->|Raft Consensus| Node1
-    end
-    
-    subgraph Internal Node Architecture
-        TCP[TCP RESP Parser] --> Cache[32-Way Segmented Cache]
-        Cache --> LSM[LSM Tree / SSTables]
-        Cache -.Telemetry.-> PINN[PINN Neural Network]
-    end
-    
-    Node1 -->|Metrics 8080| Prometheus[(Prometheus)]
-    Node2 -->|Metrics 8080| Prometheus
-    Node3 -->|Metrics 8080| Prometheus
-    Prometheus --> Grafana[Grafana Dashboard]
+Traditional key-value stores struggle with tail-latency spikes during aggressive heap allocation and sudden heavily skewed traffic loads (the "thundering herd" problem). I built DCS to explore how modern C++ memory management (Slab Arenas) combined with Machine Learning (Physics-Informed Neural Networks) could dynamically predict and instantly rebalance shards before hotspots degrade throughput, achieving ultra-low latency under extreme quantitative loads.
+
+---
+
+## Technical Highlights
+
+- **Zero-Allocation Hot Path (Slab Arena)** — The steady-state cache bypasses the OS heap entirely. During initialization, it pre-allocates an `O(1)` contiguous memory pool, pushing pointer recycling to achieve a verified throughput of **1.8 Million Requests Per Second (RPS)** with near-zero memory fragmentation.
+- **Physics-Informed Neural Network (PINN)** — Implemented a custom C++ neural network that trains in real-time on live telemetry. By modeling cache load as a Partial Differential Equation (PDE) over time, the system mathematically detects traffic skew and proactively recommends hotspot migrations.
+- **Custom LSM-Tree Storage Engine** — Persistent disk backend utilizing Write-Ahead Logs (WAL), Memtables, and Sorted String Tables (SSTables), optimized with **Bloom Filters** to instantly bypass disk I/O on `GET` misses.
+- **Raft Consensus Protocol** — Custom TCP-based Raft implementation for cluster leader election, heartbeat propagation, and robust distributed fault-tolerance across a 3-node topology.
+- **32-Way Concurrent Lock Striping** — Eliminated global mutex bottlenecks. The core caching engine routes `std::hash` modulo 32 to independent cache segments, utilizing granular locking to scale concurrency linearly across CPU cores.
+
+---
+
+## Architecture
+
+```text
+User / redis-benchmark
+  ↓ (TCP Round Robin)
+HAProxy (Load Balancer)
+  ↓ 
+C++ TCPServer (RESP Protocol Parser)
+  ↓ 
+32-Way Segmented Cache (Slab Allocator)
+  ↓ (Key Mutation)
+LSM Engine (WAL + MemTable + SSTable w/ Bloom Filter)
+  ↓ (Background Polling)
+PINN Predictive Sharder (Neural Network)
+  ↓ (Prometheus Scrape)
+Grafana Telemetry Dashboard
 ```
 
-## 🚀 Getting Started
+1. **Ingress:** Clients send raw RESP string commands through an HAProxy load balancer.
+2. **Execution:** The C++ backend parses strings, hashes the keys, and retrieves memory-recycled `Node` addresses from the Slab Arena in `O(1)`.
+3. **Persistence:** Writes are appended to an in-memory WAL and flushed to disk as compacted SSTables when the Memtable exceeds threshold.
+4. **Machine Learning:** A background thread computes live variance across segments, triggering backpropagation in the PINN to predict future traffic distributions.
+5. **Observability:** An internal HTTP server exposes real-time loss functions and compaction metrics to Prometheus/Grafana.
 
-The entire architecture is fully containerized. You do not need to build the C++ source code manually to run the cluster.
+---
 
-### Prerequisites
-- [Docker](https://www.docker.com/) and `docker-compose`
+## Engineering Depth
 
-### Deployment
-1. Clone the repository and navigate into the project directory.
-2. Spin up the cluster, HAProxy, and monitoring stack:
-   ```bash
-   docker-compose up -d --build
-   ```
-3. Open **Grafana** in your browser to view the live dashboard:
-   ```text
-   http://localhost:3000
-   ```
-   *(Navigate to Dashboards > Distributed Cache System)*
+- **Algorithmic:** Built intrusive doubly linked lists, lock-striped hash maps, LSM-Tree compactions, probabilistic Bloom Filters, and Raft leader elections entirely from scratch without external libraries.
+- **Performance:** Bypassed `new`/`delete` context switching by building localized Slab memory pools, achieving 1.8M RPS bounded by network bridging, not CPU limits.
+- **Quantitative/Systems:** Proved that non-linear partial differential equations can be utilized for high-frequency infrastructure telemetry balancing in real time. 
+- **Observability:** Fully integrated DevOps pipeline with Docker Compose, Prometheus scraping, and Grafana for live latency percentile distributions and PDE Loss metrics.
 
-## 📊 Dashboard & Observability
+---
 
-The system exposes rich, real-time metrics scraped via Prometheus and visualized in Grafana. The dashboard tracks:
-- **Throughput & Cache Hit Ratio**
-- **Raft Consensus Node Status**
-- **LSM-Tree On-Disk Compactions**
-- **PINN Neural Network Training Loss & Shard Migrations**
+## Proof of Functionality & Local Demo
 
-<div align="center">
-<img width="1919" height="887" alt="image" src="https://github.com/user-attachments/assets/471a3e63-4a99-47b8-9072-3015ed0c5016" />
-<br>
-</div>
+The system operates 100% locally via a unified Docker architecture. The included stress-test script automatically launches the cluster, opens Grafana, and triggers three simultaneous extreme-case attacks to prove system stability:
 
-## ⚡ Load Testing & Benchmarking
+### 1. Requirements
+* Docker & Docker Compose
+* PowerShell (Windows) or Bash (Linux)
+* Python 3.x (for hotspot testing)
 
-Because this cache server uses the Redis Serialization Protocol (RESP), you can benchmark it using standard Redis tools.
+### 2. Run the Stress Test
+```powershell
+# Clone the repository
+git clone https://github.com/mohit12932/Distributed-cache-system.git
+cd "Distributed cache system"
 
-Run the following command to launch a heavy, multi-threaded pipelined load test against the cluster:
-
-```bash
-docker run --rm --network distributedcachesystem_default redis redis-benchmark -h haproxy -p 6379 -a MySuperSecret -c 1000 -n 2000000 --threads 8 -P 500 -t set,get
+# Launch the God-Mode Demo Script
+.\demo.ps1
 ```
-*Observe the Grafana dashboard during the test to watch the cluster scale and the Neural Network loss curve decay.*
 
-## 🛠️ Tech Stack
-- **Core:** C++17, Multithreading, Sockets
-- **Consensus:** Raft Protocol Implementation
-- **Machine Learning:** Custom C++ Physics-Informed Neural Network (PINN)
-- **Infrastructure:** Docker, HAProxy
-- **Observability:** Prometheus, Grafana
+### 3. What the Demo Does (Watch Grafana):
+* **Uniform RPS Attack**: Forces 2,000,000 operations through HAProxy to maximize throughput.
+* **LSM Compaction Attack**: Forces 10,000,000 unique keys, blowing past the MemTable limits and triggering real-time SSD flushes.
+* **ML Hotspot Attack**: Spawns 50 concurrent Python threads spamming a *single* key, forcing the Neural Network to detect the anomaly and trigger mathematical shard migrations. 
+
+*(Press `Ctrl+C` at any time to cleanly stop the attacks and terminate the cluster.)*
