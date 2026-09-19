@@ -65,8 +65,8 @@ The system exposes rich, real-time metrics scraped via Prometheus and visualized
 - **PINN Neural Network Training Loss & Shard Migrations**
 
 <div align="center">
-  <img src="https://raw.githubusercontent.com/mohit12932/Distributed-cache-system/main/monitoring/grafana/dashboards/screenshot.png" alt="Grafana Dashboard" width="800"/>
-  <br>
+<img width="1919" height="937" alt="image" src="https://github.com/user-attachments/assets/121971a8-74df-4657-b9e8-da7fce00712a" />
+<br>
   <em>(Upload your Grafana screenshot to your repository and replace the URL above)</em>
 </div>
 
