@@ -1,24 +1,26 @@
 # Distributed Cache System (DCS)
 
-> A 1.8M RPS, zero-allocation distributed C++ cache engine backed by an LSM-Tree and a real-time Physics-Informed Neural Network for predictive shard migration.
+> A blazing-fast, distributed C++ caching system that handles 1.8 Million Requests Per Second (RPS) and uses Artificial Intelligence to prevent server crashes during massive traffic spikes.
 
-[C++17] [Raft Consensus] [LSM-Tree] [Neural Network] [Docker] [Grafana]
+[C++] [Distributed Systems] [Machine Learning] [Docker] [Grafana]
 
 ---
 
 ## 🌟 Why I Built It
 
-Traditional key-value stores struggle with tail-latency spikes during aggressive heap allocation and sudden heavily skewed traffic loads (the "thundering herd" problem). I built DCS to explore how modern C++ memory management (Slab Arenas) combined with Machine Learning (Physics-Informed Neural Networks) could dynamically predict and instantly rebalance shards before hotspots degrade throughput, achieving ultra-low latency under extreme quantitative loads.
+Most traditional caching databases experience sudden lag or crash when millions of users suddenly request the exact same piece of data at once (known as the "thundering herd" problem). 
+
+I built DCS from scratch to solve this. By combining highly-optimized **C++ memory management** with a custom **Machine Learning Neural Network**, this system can dynamically predict traffic spikes and instantly rebalance the workload across multiple servers *before* any lag occurs. 
 
 ---
 
 ## 🔥 Technical Highlights
 
-- **Zero-Allocation Hot Path (Slab Arena)** — The steady-state cache bypasses the OS heap entirely. During initialization, it pre-allocates an `O(1)` contiguous memory pool, pushing pointer recycling to achieve a verified throughput of **1.8 Million Requests Per Second (RPS)** with near-zero memory fragmentation.
-- **Physics-Informed Neural Network (PINN)** — Implemented a custom C++ neural network that trains in real-time on live telemetry. By modeling cache load as a Partial Differential Equation (PDE) over time, the system mathematically detects traffic skew and proactively recommends hotspot migrations.
-- **Custom LSM-Tree Storage Engine** — Persistent disk backend utilizing Write-Ahead Logs (WAL), Memtables, and Sorted String Tables (SSTables), optimized with **Bloom Filters** to instantly bypass disk I/O on `GET` misses.
-- **Raft Consensus Protocol** — Custom TCP-based Raft implementation for cluster leader election, heartbeat propagation, and robust distributed fault-tolerance across a 3-node topology.
-- **32-Way Concurrent Lock Striping** — Eliminated global mutex bottlenecks. The core caching engine routes `std::hash` modulo 32 to independent cache segments, utilizing granular locking to scale concurrency linearly across CPU cores.
+- **Ultra-Fast Memory Management (Zero-Allocation)** — Instead of asking the operating system for memory on every single request (which is slow), the system pre-reserves a massive pool of memory on startup and instantly recycles it. This allows the system to process a verified **1.8 Million Requests Per Second** without slowing down.
+- **Machine Learning Load Balancer** — Built a custom neural network that constantly monitors the system's live traffic. It mathematically detects when one server is about to be overloaded and proactively moves the data to quieter servers.
+- **Persistent Disk Storage (LSM-Tree)** — Wrote a custom database storage engine from scratch. It safely saves data to the hard drive so nothing is lost during a power outage, and uses smart algorithms (Bloom Filters) to ensure reading from the disk is incredibly fast.
+- **Self-Healing Cluster (Raft Protocol)** — The system runs across 3 separate nodes (servers). If one node crashes or goes offline, the other nodes automatically vote for a new leader and keep the system running flawlessly without dropping any user requests.
+- **High Concurrency** — The cache is divided into 32 independent segments, allowing the CPU to process dozens of requests simultaneously across multiple cores without waiting in line.
 
 ---
 
@@ -26,7 +28,7 @@ Traditional key-value stores struggle with tail-latency spikes during aggressive
 
 ```mermaid
 graph TD
-    Client[Client App / redis-benchmark] -->|TCP 6379| HAProxy[HAProxy Load Balancer]
+    Client[Client App / redis-benchmark] -->|TCP| HAProxy[HAProxy Load Balancer]
     HAProxy -->|Round Robin| Node1(Node-1: Cache Server)
     HAProxy -->|Round Robin| Node2(Node-2: Cache Server)
     HAProxy -->|Round Robin| Node3(Node-3: Cache Server)
@@ -38,41 +40,40 @@ graph TD
     end
     
     subgraph Internal Node Architecture
-        TCP[TCP RESP Parser] --> Cache[32-Way Segmented Cache w/ Slab Allocator]
-        Cache --> LSM[LSM Tree / SSTables w/ Bloom Filters]
-        Cache -.Telemetry.-> PINN[PINN Neural Network]
+        TCP[TCP Network Parser] --> Cache[32-Way Segmented Memory Cache]
+        Cache --> LSM[LSM Tree / Disk Storage]
+        Cache -.Live Data.-> PINN[Machine Learning Neural Network]
     end
     
-    Node1 -->|Metrics 8080| Prometheus[(Prometheus)]
-    Node2 -->|Metrics 8080| Prometheus
-    Node3 -->|Metrics 8080| Prometheus
+    Node1 -->|Metrics| Prometheus[(Prometheus)]
+    Node2 -->|Metrics| Prometheus
+    Node3 -->|Metrics| Prometheus
     Prometheus --> Grafana[Grafana Dashboard]
 ```
 
-1. **Ingress:** Clients send raw RESP string commands through an HAProxy load balancer.
-2. **Execution:** The C++ backend parses strings, hashes the keys, and retrieves memory-recycled `Node` addresses from the Slab Arena in `O(1)`.
-3. **Persistence:** Writes are appended to an in-memory WAL and flushed to disk as compacted SSTables when the Memtable exceeds threshold.
-4. **Machine Learning:** A background thread computes live variance across segments, triggering backpropagation in the PINN to predict future traffic distributions.
-5. **Observability:** An internal HTTP server exposes real-time loss functions and compaction metrics to Prometheus/Grafana.
+1. **Ingress:** User requests flow through a central Load Balancer.
+2. **Execution:** The C++ backend reads the requests and fetches data from the ultra-fast memory pool.
+3. **Persistence:** Data is safely written to the hard drive in the background.
+4. **Machine Learning:** The Neural Network constantly trains on the live traffic data, predicting future traffic spikes and rebalancing the data.
+5. **Observability:** Every action is sent to Grafana so engineers can watch the system perform in real-time.
 
 ---
 
 ## 🧠 Engineering Depth
 
-- **Algorithmic:** Built intrusive doubly linked lists, lock-striped hash maps, LSM-Tree compactions, probabilistic Bloom Filters, and Raft leader elections entirely from scratch without external libraries.
-- **Performance:** Bypassed `new`/`delete` context switching by building localized Slab memory pools, achieving 1.8M RPS bounded by network bridging, not CPU limits.
-- **Quantitative/Systems:** Proved that non-linear partial differential equations can be utilized for high-frequency infrastructure telemetry balancing in real time. 
-- **Observability:** Fully integrated DevOps pipeline with Docker Compose, Prometheus scraping, and Grafana for live latency percentile distributions and PDE Loss metrics.
+- **Algorithms from Scratch:** Built complex data structures (Linked Lists, Hash Maps, Bloom Filters, and Consensus Protocols) entirely from scratch without relying on external libraries.
+- **Performance Focused:** Maximized CPU efficiency by eliminating "garbage collection" and memory fragmentation issues typical in high-traffic applications.
+- **Real-World Systems Design:** Integrated a complete modern DevOps pipeline using Docker, Prometheus, and Grafana to prove the system works in a production-like environment.
 
 ---
 
 ## 📊 Dashboard & Observability
 
-The system exposes rich, real-time metrics scraped via Prometheus and visualized in Grafana. The dashboard tracks:
-- **Throughput & Cache Hit Ratio**
-- **Raft Consensus Node Status**
-- **LSM-Tree On-Disk Compactions**
-- **PINN Neural Network Training Loss & Shard Migrations**
+The system includes a live Grafana dashboard to track performance. The dashboard displays:
+- **Throughput (RPS)**
+- **Server Health and Leader Elections**
+- **Disk Writing Activity**
+- **Machine Learning Predictions & Actions**
 
 <div align="center">
 <img width="1919" height="887" alt="image" src="https://github.com/user-attachments/assets/471a3e63-4a99-47b8-9072-3015ed0c5016" />
@@ -81,14 +82,14 @@ The system exposes rich, real-time metrics scraped via Prometheus and visualized
 
 ---
 
-## 🚀 Proof of Functionality & Local Demo
+## 🚀 Run it Yourself! (Local Demo)
 
-The system operates 100% locally via a unified Docker architecture. The included stress-test script automatically launches the cluster, opens Grafana, and triggers three simultaneous extreme-case attacks to prove system stability:
+The system operates 100% locally via Docker. You can launch the system and trigger three extreme stress tests to watch it perform live!
 
 ### 1. Requirements
 * Docker & Docker Compose
 * PowerShell (Windows) or Bash (Linux)
-* Python 3.x (for hotspot testing)
+* Python 3.x
 
 ### 2. Run the Stress Test
 ```powershell
@@ -96,13 +97,13 @@ The system operates 100% locally via a unified Docker architecture. The included
 git clone https://github.com/mohit12932/Distributed-cache-system.git
 cd "Distributed cache system"
 
-# Launch the God-Mode Demo Script
+# Launch the Automated Demo Script
 .\demo.ps1
 ```
 
-### 3. What the Demo Does (Watch Grafana):
-* **Uniform RPS Attack**: Forces 2,000,000 operations through HAProxy to maximize throughput.
-* **LSM Compaction Attack**: Forces 10,000,000 unique keys, blowing past the MemTable limits and triggering real-time SSD flushes.
-* **ML Hotspot Attack**: Spawns 50 concurrent Python threads spamming a *single* key, forcing the Neural Network to detect the anomaly and trigger mathematical shard migrations. 
+### 3. What the Demo Does (Watch Grafana!):
+* **Throughput Test**: Floods the servers with 2,000,000 requests to maximize speed.
+* **Storage Test**: Forces 10,000,000 unique data points into the system to trigger high-speed disk writing.
+* **Machine Learning Test**: Uses 50 simultaneous Python threads to artificially spam a *single* piece of data, forcing the Neural Network to detect the anomaly and rescue the server!
 
-*(Press `Ctrl+C` at any time to cleanly stop the attacks and terminate the cluster.)*
+*(Press `Ctrl+C` at any time to safely stop the tests and turn off the servers.)*
