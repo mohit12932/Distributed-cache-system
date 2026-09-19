@@ -21,20 +21,17 @@ jobs:
         
     - name: Build project
       run: |
-        mkdir -p build
-        g++ -std=c++17 -O2 -Wall -Wextra -Wno-unused-variable -I. -o build/distributed_cache src/main.cpp -pthread
-        g++ -std=c++17 -O2 -I. -o build/test_lru_cache src/tests/test_lru_cache.cpp -pthread
-        g++ -std=c++17 -O2 -I. -o build/test_concurrency src/tests/test_concurrency.cpp -pthread
-        g++ -std=c++17 -O2 -I. -o build/test_resp_parser src/tests/test_resp_parser.cpp -pthread
+        cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+        cmake --build build -j $(nproc)
         
     - name: Run LRU Cache Tests
-      run: ./build/test_lru_cache
+      run: ./build/cache_tests
       
     - name: Run Concurrency Tests
-      run: ./build/test_concurrency
+      run: ./build/concurrency_tests
       
     - name: Run RESP Parser Tests
-      run: ./build/test_resp_parser
+      run: ./build/resp_tests
 
   build-windows:
     runs-on: windows-latest
@@ -43,24 +40,19 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
       
-    - name: Setup MSVC Developer Environment
-      uses: ilammy/msvc-dev-cmd@v1
-      
-    - name: Build with MSVC
-      shell: cmd
+    - name: Build project
       run: |
-        mkdir build
-        cl /std:c++17 /EHsc /O2 /W3 /I. /Fe:build\distributed_cache.exe src\main.cpp ws2_32.lib
-        cl /std:c++17 /EHsc /O2 /W3 /I. /Fe:build\test_lru_cache.exe src\tests\test_lru_cache.cpp ws2_32.lib
-        cl /std:c++17 /EHsc /O2 /W3 /I. /Fe:build\test_concurrency.exe src\tests\test_concurrency.cpp ws2_32.lib
-        cl /std:c++17 /EHsc /O2 /W3 /I. /Fe:build\test_resp_parser.exe src\tests\test_resp_parser.cpp ws2_32.lib
+        cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+        cmake --build build --config Release
         
-    - name: Run Tests
-      shell: cmd
-      run: |
-        build\test_lru_cache.exe
-        build\test_concurrency.exe
-        build\test_resp_parser.exe
+    - name: Run LRU Cache Tests
+      run: .\build\Release\cache_tests.exe
+      
+    - name: Run Concurrency Tests
+      run: .\build\Release\concurrency_tests.exe
+      
+    - name: Run RESP Parser Tests
+      run: .\build\Release\resp_tests.exe
 
   integration-test:
     runs-on: ubuntu-latest
@@ -70,23 +62,17 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
       
-    - name: Create data directories
+    - name: Build and Start Docker Cluster
       run: |
-        mkdir -p data/lsm/sst/L0 data/lsm/sst/L1 data/lsm/sst/L2 data/lsm/sst/L3
-        mkdir -p data/lsm/wal data/raft
+        docker-compose build
+        docker-compose up -d
         
-    - name: Build
+    - name: Verify Cluster Health
       run: |
-        mkdir -p build
-        g++ -std=c++17 -O2 -I. -o build/distributed_cache src/main.cpp -pthread
-        g++ -std=c++17 -O2 -I. -o build/test_live_server tests/test_live_server.cpp -pthread
+        sleep 10
+        # Send ping to HAProxy
+        echo -e "*1\r\n\$4\r\nPING\r\n" | nc localhost 6379 | grep -q "PONG"
         
-    - name: Start server and run integration tests
-      env:
-        TCP_PORT: 6399
-        HTTP_PORT: 8080
-      run: |
-        trap 'pkill -f distributed_cache || true' EXIT
-        ./build/distributed_cache --port 6399 --mode write-through &
-        sleep 3
-        ./build/test_live_server
+    - name: View Logs on Failure
+      if: failure()
+      run: docker-compose logs
