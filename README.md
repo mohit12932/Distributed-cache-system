@@ -67,7 +67,6 @@ The system exposes rich, real-time metrics scraped via Prometheus and visualized
 <div align="center">
 <img width="1919" height="937" alt="image" src="https://github.com/user-attachments/assets/121971a8-74df-4657-b9e8-da7fce00712a" />
 <br>
-  <em>(Upload your Grafana screenshot to your repository and replace the URL above)</em>
 </div>
 
 ## ⚡ Load Testing & Benchmarking
