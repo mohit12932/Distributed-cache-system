@@ -1,3 +1,5 @@
+
+
 # Distributed Cache System (DCS)
 
 > A blazing-fast, distributed C++ caching system that handles 1.8 Million Requests Per Second (RPS) and uses Artificial Intelligence to prevent server crashes during massive traffic spikes.
@@ -91,15 +93,6 @@ The system operates 100% locally via Docker. You can launch the system and trigg
 * PowerShell (Windows) or Bash (Linux)
 * Python 3.x
 
-### 2. Run the Stress Test
-```powershell
-# Clone the repository
-git clone https://github.com/mohit12932/Distributed-cache-system.git
-cd "Distributed cache system"
-
-# Launch the Automated Demo Script
-.\demo.ps1
-```
 
 ### 3. What the Demo Does (Watch Grafana!):
 * **Throughput Test**: Floods the servers with 2,000,000 requests to maximize speed.
@@ -107,3 +100,7 @@ cd "Distributed cache system"
 * **Machine Learning Test**: Uses 50 simultaneous Python threads to artificially spam a *single* piece of data, forcing the Neural Network to detect the anomaly and rescue the server!
 
 *(Press `Ctrl+C` at any time to safely stop the tests and turn off the servers.)*
+
+> ⚠️ **Copyright & Academic Integrity Notice** 
+> This repository is the original work and intellectual property of **Mohit Thakur**. 
+> It is strictly meant to be viewed by recruiters for evaluation purposes. **Unauthorized copying, cloning, or presentation of this project as your own work during campus placements or elsewhere is strictly prohibited and constitutes plagiarism.** Any such instances will be immediately reported to the respective Placement Cell and hiring companies. The extensive commit history serves as cryptographic proof of original authorship.

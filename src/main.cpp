@@ -1,3 +1,11 @@
+/* 
+ * ---------------------------------------------------------------------------
+ * Copyright (c) 2024 Mohit Thakur. All rights reserved.
+ * This code is part of the Distributed Cache System project.
+ * Unauthorized copying or use of this file is strictly prohibited.
+ * Author: Mohit Thakur
+ * ---------------------------------------------------------------------------
+ */
 #include "include/sync/cache_manager.h"
 #include "include/storage/lsm_engine.h"
 #include "include/raft/raft_node.h"
@@ -230,3 +238,4 @@ int main(int argc, char* argv[]) {
     spdlog::info("Server stopped gracefully.");
     return 0;
 }
+

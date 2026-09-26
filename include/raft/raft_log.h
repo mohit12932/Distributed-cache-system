@@ -1,3 +1,11 @@
+/* 
+ * ---------------------------------------------------------------------------
+ * Copyright (c) 2024 Mohit Thakur. All rights reserved.
+ * This code is part of the Distributed Cache System project.
+ * Unauthorized copying or use of this file is strictly prohibited.
+ * Author: Mohit Thakur
+ * ---------------------------------------------------------------------------
+ */
 #pragma once
 // ────────────────────────────────────────────────────────────────
 // Raft Log: Persistent log entries and voting state for Raft.
@@ -269,3 +277,4 @@ private:
 
 }  // namespace raft
 }  // namespace dcs
+

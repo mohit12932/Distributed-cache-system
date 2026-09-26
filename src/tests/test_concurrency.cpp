@@ -1,3 +1,11 @@
+/* 
+ * ---------------------------------------------------------------------------
+ * Copyright (c) 2024 Mohit Thakur. All rights reserved.
+ * This code is part of the Distributed Cache System project.
+ * Unauthorized copying or use of this file is strictly prohibited.
+ * Author: Mohit Thakur
+ * ---------------------------------------------------------------------------
+ */
 /**
  * Concurrency test suite for SegmentedCache.
  * Hammers the cache from multiple threads to verify thread safety.
@@ -192,3 +200,4 @@ int main() {
     std::cout << "Results: " << passed << " passed, " << failed << " failed.\n";
     return failed > 0 ? 1 : 0;
 }
+

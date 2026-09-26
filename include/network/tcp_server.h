@@ -1,3 +1,11 @@
+/* 
+ * ---------------------------------------------------------------------------
+ * Copyright (c) 2024 Mohit Thakur. All rights reserved.
+ * This code is part of the Distributed Cache System project.
+ * Unauthorized copying or use of this file is strictly prohibited.
+ * Author: Mohit Thakur
+ * ---------------------------------------------------------------------------
+ */
 #pragma once
 
 // Winsock MUST be included before windows.h (pulled in by compat/threading.h)
@@ -247,3 +255,4 @@ private:
 
 }  // namespace network
 }  // namespace dcs
+
